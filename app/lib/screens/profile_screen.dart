@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:proquote/models/user.dart';
 import 'package:proquote/utils/mock_data.dart';
+import 'package:provider/provider.dart';
+import 'package:proquote/providers/auth_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -9,6 +11,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final User user = MockData.currentUser;
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,17 +37,17 @@ class ProfileScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 60,
                     backgroundImage: CachedNetworkImageProvider(
-                      user.profileImageUrl,
+                      user.profileImageUrl ?? 'https://via.placeholder.com/120',
                     ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    user.name,
+                    user.name ?? 'User',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    user.email,
+                    user.email ?? 'email@example.com',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -58,8 +61,39 @@ class ProfileScreen extends StatelessWidget {
                     icon: const Icon(Icons.edit),
                     label: const Text('Edit Profile'),
                   ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      await authProvider.signOut();
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sign Out'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
                 ],
               ),
+            ),
+            const SizedBox(height: 32),
+
+            // Contact information
+            Text(
+              'Contact Information',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.phone),
+              title: const Text('Phone Number'),
+              subtitle: Text(user.phoneNumber ?? 'Not provided'),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.location_on),
+              title: const Text('Address'),
+              subtitle: Text(user.address ?? 'Not provided'),
             ),
             const SizedBox(height: 32),
 
@@ -68,18 +102,6 @@ class ProfileScreen extends StatelessWidget {
               context,
               'Personal Information',
               [
-                _buildInfoRow(
-                  context,
-                  Icons.phone,
-                  'Phone Number',
-                  user.phoneNumber,
-                ),
-                _buildInfoRow(
-                  context,
-                  Icons.location_on,
-                  'Address',
-                  user.address,
-                ),
                 _buildInfoRow(
                   context,
                   Icons.calendar_today,
@@ -159,23 +181,6 @@ class ProfileScreen extends StatelessWidget {
                   },
                 ),
               ],
-            ),
-            const SizedBox(height: 32),
-
-            // Logout button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  // Logout
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                ),
-              ),
             ),
             const SizedBox(height: 32),
           ],

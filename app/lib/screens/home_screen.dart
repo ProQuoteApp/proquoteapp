@@ -54,7 +54,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 // Welcome section
                 Text(
-                  'Welcome, ${MockData.currentUser.name.split(' ')[0]}!',
+                  'Welcome, ${MockData.currentUser.name?.split(' ')[0] ?? 'User'}!',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 4),

@@ -3,6 +3,7 @@ import 'package:proquote/models/provider.dart';
 import 'package:proquote/models/job.dart';
 import 'package:proquote/models/quote.dart';
 import 'package:proquote/models/user.dart';
+import 'package:proquote/models/user_profile.dart';
 
 class MockData {
   // Service Categories
@@ -313,6 +314,8 @@ class MockData {
     address: '123 Main Street, Sandton, Johannesburg',
     jobIds: ['job1', 'job2', 'job3'],
     createdAt: DateTime.now().subtract(const Duration(days: 30)),
-    isServiceProvider: false,
+    userType: UserType.seeker,
+    isEmailVerified: true,
+    isProfileComplete: true,
   );
 } 
