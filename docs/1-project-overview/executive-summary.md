@@ -48,7 +48,7 @@ The South African home services market faces several critical challenges:
 
 ### Technical Implementation
 1. **Mobile Platform**
-   - React Native cross-platform application
+   - Flutter cross-platform application
    - Intuitive user interface
    - Offline capability
    - Real-time updates

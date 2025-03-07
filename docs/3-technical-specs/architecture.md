@@ -1,29 +1,29 @@
 # ProQuote Technical Architecture
 
 ## System Overview
-ProQuote uses a React Native mobile application with a modern cloud backend, enabling cross-platform deployment while maintaining native-like performance and a single codebase.
+ProQuote uses a Flutter mobile application with a modern cloud backend, enabling cross-platform deployment while maintaining native-like performance and a single codebase.
 
-**Reasoning**: This architecture was chosen to maximize market reach while minimizing development complexity and cost. React Native provides near-native performance while allowing us to maintain a single codebase for both iOS and Android platforms, significantly reducing development time and maintenance overhead.
+**Reasoning**: This architecture was chosen to maximize market reach while minimizing development complexity and cost. Flutter provides near-native performance while allowing us to maintain a single codebase for both iOS and Android platforms, significantly reducing development time and maintenance overhead.
 
 ## Technology Stack
 
 ### Mobile Applications (Cross-Platform)
-- Framework: React Native
-- Language: TypeScript
+- Framework: Flutter
+- Language: Dart
 - Minimum Versions:
   - iOS: 14.0+
   - Android: API 26+
-- State Management: Redux Toolkit
-- Navigation: React Navigation
-- UI Components: Native Base
-- Forms: React Hook Form
+- State Management: Provider/Riverpod
+- Navigation: Go Router
+- UI Components: Material/Cupertino
+- Forms: Flutter Form
 
-**Reasoning**: React Native was selected over native development or Flutter because:
-- Large pool of React/React Native developers in South Africa
+**Reasoning**: Flutter was selected over native development or React Native because:
+- Large pool of Flutter developers in South Africa
 - Shared codebase reduces development time and costs
 - Strong ecosystem of libraries for business applications
 - Excellent integration with Firebase
-- TypeScript provides robust type safety and better maintainability
+- Dart provides robust type safety and better maintainability
 
 ### Backend (Cloud Services)
 - Platform: Firebase
@@ -109,9 +109,9 @@ ProQuote uses a React Native mobile application with a modern cloud backend, ena
 - Analytics provide crucial business insights
 
 ## Data Flow
-1. User interactions in React Native components
-2. Business logic in TypeScript services
-3. Redux state management
+1. User interactions in Flutter components
+2. Business logic in Dart services
+3. Provider/Riverpod state management
 4. Firebase SDK handles data sync
 5. Real-time updates via Firestore
 6. Push notifications via FCM

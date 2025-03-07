@@ -2,36 +2,35 @@
 
 ## Frontend Technologies
 
-### Mobile Application (React Native)
+### Mobile Application (Flutter)
 - **Core Framework**
-  - React Native 0.73+
-  - TypeScript 5.0+
-  - React 18+
+  - Flutter 3.0+
+  - Dart 3.0+
 
 **Reasoning**: These core technologies were selected because:
-- React Native enables cross-platform development with a single codebase
-- TypeScript provides strong type safety and better maintainability
+- Flutter enables cross-platform development with a single codebase
+- Dart provides strong type safety and better maintainability
 - Latest versions ensure access to modern features and security updates
 - Strong community support and extensive documentation
-- Large talent pool in South Africa familiar with React/React Native
+- Large talent pool in South Africa familiar with Flutter
 
 - **State Management**
-  - Redux Toolkit
-  - Redux Persist (offline storage)
-  - React Query (server state)
+  - Provider/Riverpod
+  - Hive (offline storage)
+  - Dio (API client)
 
 **Reasoning**: This state management approach:
-- Redux Toolkit simplifies complex state management
-- Redux Persist enables robust offline functionality
-- React Query optimizes server state and caching
+- Provider/Riverpod simplifies complex state management
+- Hive enables robust offline functionality
+- Dio optimizes server state and caching
 - Clear separation of local and server state
 - Excellent developer tools for debugging
 
 - **UI/UX**
-  - Native Base (UI components)
-  - React Navigation 6+
-  - React Native Reanimated
-  - React Native SVG
+  - Material Design/Cupertino widgets
+  - Go Router
+  - Flutter Animations
+  - Flutter SVG
 
 **Reasoning**: These UI tools were chosen to:
 - Provide consistent cross-platform components
@@ -41,27 +40,27 @@
 - Reduce development time with pre-built components
 
 - **Forms & Validation**
-  - React Hook Form
-  - Yup/Zod validation
+  - Flutter Form
+  - Form validators
 
 **Reasoning**: Form handling tools selected for:
 - Superior performance with uncontrolled components
 - Built-in validation capabilities
 - Reduced boilerplate code
-- Excellent TypeScript integration
+- Excellent Dart integration
 - Small bundle size impact
 
 ### Development Tools
 - **IDE**
   - Visual Studio Code
-  - Xcode (iOS)
   - Android Studio
+  - Xcode (iOS)
 
 - **Development Utilities**
-  - React Native CLI
+  - Flutter CLI
   - Flipper (debugging)
-  - React Native Debugger
-  - Metro bundler
+  - DevTools
+  - Dart DevTools
 
 ## Backend Services
 
@@ -118,8 +117,8 @@
 
 ### Testing Tools
 - Jest
-- React Native Testing Library
-- Detox (E2E testing)
+- Flutter Test
+- Integration testing
 - Firebase Test Lab
 
 **Reasoning**: Testing tools were chosen to:
@@ -231,7 +230,7 @@
 - Facilitate team collaboration
 
 ### Environment Management
-- React Native Config
+- Flutter Config
 - Firebase Config
 - Environment variables
 
@@ -256,7 +255,7 @@
 - Onboarding efficiency
 
 ## Performance Tools
-- React Native Performance
+- Flutter Performance
 - Firebase Performance
 - Bundle analyzer
 - Lighthouse 
