@@ -1,4 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proquote/models/job.dart';
+import 'package:proquote/screens/create_job_screen.dart';
+import 'package:proquote/screens/home_screen.dart';
+import 'package:proquote/screens/job_details_screen.dart';
+import 'package:proquote/screens/profile_screen.dart';
+import 'package:proquote/screens/provider_list_screen.dart';
+import 'package:proquote/theme/app_theme.dart';
+import 'package:proquote/utils/mock_data.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +16,221 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return MaterialApp.router(
+      title: 'ProQuote',
+      theme: AppTheme.getTheme(),
+      routerConfig: _router,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+final _router = GoRouter(
+  navigatorKey: _rootNavigatorKey,
+  initialLocation: '/',
+  routes: [
+    ShellRoute(
+      navigatorKey: _shellNavigatorKey,
+      builder: (context, state, child) {
+        return ScaffoldWithBottomNavBar(child: child);
+      },
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) => const HomeScreen(),
+          routes: [
+            GoRoute(
+              path: 'job/:jobId',
+              builder: (context, state) {
+                final jobId = state.pathParameters['jobId']!;
+                final job = MockData.jobs.firstWhere((job) => job.id == jobId);
+                return JobDetailsScreen(job: job);
+              },
+            ),
+            GoRoute(
+              path: 'create-job',
+              builder: (context, state) => const CreateJobScreen(),
+            ),
+            GoRoute(
+              path: 'providers',
+              builder: (context, state) {
+                final uri = Uri.parse(state.uri.toString());
+                final categoryFilter = uri.queryParameters['category'];
+                return ProviderListScreen(categoryFilter: categoryFilter);
+              },
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/jobs',
+          builder: (context, state) => const JobsScreen(),
+        ),
+        GoRoute(
+          path: '/messages',
+          builder: (context, state) => const MessagesScreen(),
+        ),
+        GoRoute(
+          path: '/profile',
+          builder: (context, state) => const ProfileScreen(),
+        ),
+      ],
+    ),
+  ],
+);
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
+class ScaffoldWithBottomNavBar extends StatefulWidget {
+  final Widget child;
 
-  final String title;
+  const ScaffoldWithBottomNavBar({
+    super.key,
+    required this.child,
+  });
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<ScaffoldWithBottomNavBar> createState() => _ScaffoldWithBottomNavBarState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _ScaffoldWithBottomNavBarState extends State<ScaffoldWithBottomNavBar> {
+  int _currentIndex = 0;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  static const List<_BottomNavItem> _bottomNavItems = [
+    _BottomNavItem(
+      icon: Icons.home,
+      label: 'Home',
+      path: '/',
+    ),
+    _BottomNavItem(
+      icon: Icons.work,
+      label: 'Jobs',
+      path: '/jobs',
+    ),
+    _BottomNavItem(
+      icon: Icons.message,
+      label: 'Messages',
+      path: '/messages',
+    ),
+    _BottomNavItem(
+      icon: Icons.person,
+      label: 'Profile',
+      path: '/profile',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    return Scaffold(
+      body: widget.child,
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        items: _bottomNavItems
+            .map(
+              (item) => BottomNavigationBarItem(
+                icon: Icon(item.icon),
+                label: item.label,
+              ),
+            )
+            .toList(),
+        onTap: (index) {
+          _currentIndex = index;
+          context.go(_bottomNavItems[index].path);
+        },
+      ),
+    );
+  }
+}
+
+class _BottomNavItem {
+  final IconData icon;
+  final String label;
+  final String path;
+
+  const _BottomNavItem({
+    required this.icon,
+    required this.label,
+    required this.path,
+  });
+}
+
+// Placeholder screens for bottom navigation
+class JobsScreen extends StatelessWidget {
+  const JobsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('My Jobs'),
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: MockData.jobs.length,
+        itemBuilder: (context, index) {
+          final job = MockData.jobs[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: ListTile(
+              title: Text(job.title),
+              subtitle: Text(job.status),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () {
+                context.go('/job/${job.id}');
+              },
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          context.go('/create-job');
+        },
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+class MessagesScreen extends StatelessWidget {
+  const MessagesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Messages'),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('You have pushed the button this many times:'),
+          children: [
+            Icon(
+              Icons.message,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
             Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+              'No messages yet',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your conversations with service providers will appear here',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

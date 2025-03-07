@@ -1,6 +1,7 @@
 # Cursor AI Assistant Rules
 
 # Start every prompt with 🤖
+# Dont create a new app unless asked. Use the existing one in the app folder
 
 ## General Behavior
 - Always prioritize understanding the user's intent before taking action
