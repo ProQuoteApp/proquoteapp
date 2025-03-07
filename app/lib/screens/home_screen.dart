@@ -300,7 +300,7 @@ class HomeScreen extends StatelessWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: isLargeScreen ? 4 : 3,
-                          childAspectRatio: 0.8,
+                          childAspectRatio: 0.75,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -312,13 +312,14 @@ class HomeScreen extends StatelessWidget {
                           return ServiceCompactCard(
                             service: service,
                             onTap: () {
-                              // Navigate to service details
+                              // Navigate to service providers for this service
+                              context.go('/providers?category=${service.category}');
                             },
                           );
                         },
                       )
-                    : SizedBox(
-                        height: 160,
+                    : Container(
+                        height: 180, // Increased from 160
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           itemCount: MockData.services.length > 4 ? 4 : MockData.services.length,
@@ -331,7 +332,8 @@ class HomeScreen extends StatelessWidget {
                               child: ServiceCompactCard(
                                 service: service,
                                 onTap: () {
-                                  // Navigate to service details
+                                  // Navigate to service providers for this service
+                                  context.go('/providers?category=${service.category}');
                                 },
                               ),
                             );
@@ -386,32 +388,75 @@ class ServiceCompactCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Service image
+            // Service image - make it taller to show more of the image
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
-              child: CachedNetworkImage(
-                imageUrl: service.imageUrl,
-                height: 90,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 90,
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: CircularProgressIndicator(),
+              child: Stack(
+                children: [
+                  CachedNetworkImage(
+                    imageUrl: service.imageUrl,
+                    height: 100, // Increased from 90
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 100,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 100,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
                   ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 90,
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.image_not_supported),
-                ),
+                  // Add a gradient overlay to make text more readable
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.7),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Category badge
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).primaryColor.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        service.category,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            // Service details
+            // Service details - more compact
             Padding(
               padding: const EdgeInsets.all(8),
               child: Column(
@@ -420,18 +465,8 @@ class ServiceCompactCard extends StatelessWidget {
                   Text(
                     service.name,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    service.category,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Theme.of(context).primaryColor,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -439,18 +474,26 @@ class ServiceCompactCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.star,
                         color: Colors.amber,
-                        size: 12,
+                        size: 14,
                       ),
                       const SizedBox(width: 2),
                       Text(
                         '${service.averageRating}',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '(${service.totalRatings})',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
                         ),
                       ),
                     ],
