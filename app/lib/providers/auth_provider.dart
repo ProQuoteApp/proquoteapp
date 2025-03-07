@@ -61,7 +61,7 @@ class AuthProvider extends ChangeNotifier {
   /// Whether authentication is in progress
   bool get isLoading => _isLoading;
 
-  /// Error message if authentication failed
+  /// Current error message
   String? get error => _error;
 
   /// Whether the user is authenticated
@@ -294,8 +294,8 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Reset error
-  void resetError() {
+  /// Clear any error message
+  void clearError() {
     _error = null;
     notifyListeners();
   }

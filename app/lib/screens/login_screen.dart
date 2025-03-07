@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
 import '../utils/constants.dart';
+import '../utils/platform_helper.dart';
+import '../widgets/error_display.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -221,26 +223,27 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 
                 // Error Message
                 if (error != null)
-                  Container(
-                    padding: const EdgeInsets.all(12.0),
-                    margin: const EdgeInsets.only(bottom: 24.0),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red.shade700),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            error,
-                            style: TextStyle(color: Colors.red.shade700),
-                          ),
-                        ),
-                      ],
-                    ),
+                  ErrorDisplay(
+                    message: error,
+                    type: ErrorType.error,
+                    isDismissible: true,
+                    onDismiss: () {
+                      authProvider.clearError();
+                    },
+                    actionButton: error.contains('network') ? 
+                      TextButton(
+                        onPressed: () {
+                          // Retry the last operation
+                          if (_isPhoneAuth && authProvider.isPhoneVerificationInProgress) {
+                            _verifyPhoneCode();
+                          } else if (_isPhoneAuth) {
+                            _verifyPhoneNumber();
+                          } else {
+                            _submitForm();
+                          }
+                        },
+                        child: const Text('Retry'),
+                      ) : null,
                   ),
                 
                 // Tab Bar for Sign In / Sign Up
@@ -626,60 +629,87 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       // Social Sign In Buttons
                       Row(
                         children: [
-                          // Google Button
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: isLoading ? null : _handleGoogleSignIn,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade300),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                          // Google Button - Only show if supported on this platform
+                          if (PlatformHelper.isFeatureSupported('supportsGoogleSignIn'))
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: isLoading ? null : _handleGoogleSignIn,
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    height: 18,
-                                    width: 18,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        'G',
-                                        style: TextStyle(
-                                          color: Colors.red[700],
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      height: 18,
+                                      width: 18,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'G',
+                                          style: TextStyle(
+                                            color: Colors.red[700],
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Text('Google'),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          // Phone Button
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: isLoading ? null : _togglePhoneAuth,
-                              icon: const Icon(Icons.phone, size: 20),
-                              label: Text(_isPhoneAuth ? 'Email' : 'Phone'),
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey.shade300),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                    const SizedBox(width: 8),
+                                    const Text('Google'),
+                                  ],
                                 ),
                               ),
                             ),
-                          ),
+                          if (PlatformHelper.isFeatureSupported('supportsGoogleSignIn') && 
+                              PlatformHelper.isFeatureSupported('supportsPhoneAuth'))
+                            const SizedBox(width: 16),
+                          // Phone Button - Only show if supported on this platform
+                          if (PlatformHelper.isFeatureSupported('supportsPhoneAuth'))
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: isLoading ? null : _togglePhoneAuth,
+                                icon: const Icon(Icons.phone, size: 20),
+                                label: Text(_isPhoneAuth ? 'Email' : 'Phone'),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          // Apple Button - Only show on iOS
+                          if (PlatformHelper.isFeatureSupported('supportsAppleSignIn'))
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: isLoading ? null : () {
+                                  // TODO: Implement Apple Sign In
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Apple Sign In not implemented yet'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.apple, size: 20),
+                                label: const Text('Apple'),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ],

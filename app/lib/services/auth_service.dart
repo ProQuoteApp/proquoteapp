@@ -4,7 +4,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import '../models/auth_user.dart';
 import '../models/user_profile.dart';
-import '../models/user.dart' as app_user;
 
 /// Exception thrown during the authentication process
 class AuthException implements Exception {
@@ -173,7 +172,7 @@ class AuthService {
     } catch (e) {
       print('Unexpected error during Google Sign-In: $e');
       if (e is AuthException) {
-        throw e;
+        rethrow;
       }
       throw AuthException('Google Sign-In failed: ${e.toString()}');
     }

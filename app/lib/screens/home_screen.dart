@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:proquote/models/service.dart';
-import 'package:proquote/models/job.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/widgets/service_category_card.dart';
-import 'package:proquote/widgets/service_card.dart';
 import 'package:proquote/widgets/job_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -336,7 +334,7 @@ class HomeScreen extends StatelessWidget {
                           );
                         },
                       )
-                    : Container(
+                    : SizedBox(
                         height: 180, // Increased from 160
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,

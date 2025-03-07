@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:proquote/models/job.dart';
 import 'package:proquote/screens/create_job_screen.dart';
 import 'package:proquote/screens/home_screen.dart';
 import 'package:proquote/screens/job_details_screen.dart';
@@ -15,8 +14,6 @@ import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
-import 'package:proquote/utils/constants.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -141,9 +138,9 @@ class MainScreen extends StatelessWidget {
   final Widget child;
 
   const MainScreen({
-    Key? key,
+    super.key,
     required this.child,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +152,7 @@ class MainScreen extends StatelessWidget {
 }
 
 class AppBottomNavigationBar extends StatelessWidget {
-  const AppBottomNavigationBar({Key? key}) : super(key: key);
+  const AppBottomNavigationBar({super.key});
 
   static const List<(IconData, String, String)> _items = [
     (Icons.home, 'Home', '/'),

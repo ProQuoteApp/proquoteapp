@@ -3,10 +3,11 @@ import 'package:proquote/models/user.dart';
 import 'package:provider/provider.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
-import 'package:proquote/models/auth_user.dart';
 import 'package:proquote/models/user_profile.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
+import 'package:proquote/widgets/error_display.dart';
+import 'package:proquote/widgets/address_autocomplete.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -77,26 +78,13 @@ class ProfileScreen extends StatelessWidget {
                         children: [
                           // Show error message if there is one
                           if (error != null)
-                            Container(
-                              margin: const EdgeInsets.only(top: AppConstants.itemSpacing),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.orange.shade200),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      error,
-                                      style: TextStyle(color: Colors.orange.shade800),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            ErrorDisplay(
+                              message: error,
+                              type: ErrorType.warning,
+                              isDismissible: true,
+                              onDismiss: () {
+                                userProvider.resetError();
+                              },
                             ),
                             
                           const SizedBox(height: AppConstants.sectionSpacing),
@@ -339,6 +327,13 @@ class EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
+      // Show a snackbar with validation error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fix the errors in the form'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -354,7 +349,7 @@ class EditProfileScreenState extends State<EditProfileScreen> {
 
       if (authUser == null) {
         setState(() {
-          _error = 'User not authenticated';
+          _error = 'User not authenticated. Please sign in again.';
           _isLoading = false;
         });
         return;
@@ -366,11 +361,11 @@ class EditProfileScreenState extends State<EditProfileScreen> {
       // Create a UserProfile object with the updated values
       final updatedProfile = UserProfile(
         uid: authUser.uid,
-        displayName: _nameController.text,
+        displayName: _nameController.text.trim(),
         email: updatedUser.email,
-        phoneNumber: _phoneController.text,
+        phoneNumber: _phoneController.text.trim(),
         photoURL: updatedUser.profileImageUrl,
-        address: _addressController.text,
+        address: _addressController.text.trim(),
         userType: updatedUser.isServiceProvider ? UserType.provider : UserType.seeker,
         isProfileComplete: true,
         createdAt: updatedUser.createdAt,
@@ -382,12 +377,42 @@ class EditProfileScreenState extends State<EditProfileScreen> {
           .updateUserProfile(authUser, updatedProfile);
 
       if (mounted) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
+      // Handle specific error types
+      String errorMessage = 'Error updating profile';
+      
+      if (e.toString().contains('permission-denied')) {
+        errorMessage = 'Permission denied. You may not have access to update this profile.';
+      } else if (e.toString().contains('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (e.toString().contains('not-found')) {
+        errorMessage = 'Profile not found. Please try creating a new profile.';
+      } else {
+        errorMessage = 'Error updating profile: $e';
+      }
+      
       setState(() {
-        _error = 'Error updating profile: $e';
+        _error = errorMessage;
       });
+      
+      // Also show a snackbar for immediate feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -447,26 +472,15 @@ class EditProfileScreenState extends State<EditProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_error != null)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: AppConstants.itemSpacing),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade800),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _error!,
-                              style: TextStyle(color: Colors.red.shade800),
-                            ),
-                          ),
-                        ],
-                      ),
+                    ErrorDisplay(
+                      message: _error!,
+                      type: ErrorType.error,
+                      isDismissible: true,
+                      onDismiss: () {
+                        setState(() {
+                          _error = null;
+                        });
+                      },
                     ),
 
                   Center(
@@ -513,18 +527,41 @@ class EditProfileScreenState extends State<EditProfileScreen> {
                       labelText: 'Phone Number',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.phone),
+                      hintText: '+27 82 123 4567',
                     ),
                     keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty) {
+                        // Basic phone validation - should contain only numbers, spaces, and + sign
+                        // and be at least 10 characters
+                        if (!RegExp(r'^[+\d\s()-]+$').hasMatch(value)) {
+                          return 'Please enter a valid phone number';
+                        }
+                        if (value.replaceAll(RegExp(r'[\s()-]'), '').length < 10) {
+                          return 'Phone number is too short';
+                        }
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: AppConstants.itemSpacing),
-                  TextFormField(
-                    controller: _addressController,
+                  AddressAutocomplete(
+                    initialValue: widget.user.address,
                     decoration: const InputDecoration(
                       labelText: 'Address',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.location_on),
+                      hintText: 'Enter your full address',
                     ),
-                    maxLines: 2,
+                    validator: (value) {
+                      if (value != null && value.isNotEmpty && value.length < 5) {
+                        return 'Please enter a valid address';
+                      }
+                      return null;
+                    },
+                    onAddressSelected: (address) {
+                      _addressController.text = address;
+                    },
                   ),
                   const SizedBox(height: AppConstants.sectionSpacing),
                   Text(
