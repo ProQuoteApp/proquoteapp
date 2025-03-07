@@ -21,17 +21,13 @@ class AuthException implements Exception {
 class AuthService {
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
-  final GoogleSignIn? _googleSignIn;
 
   /// Constructor that allows dependency injection for testing
   AuthService({
     firebase_auth.FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
-    GoogleSignIn? googleSignIn,
   })  : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        // Skip Google Sign-In initialization on web until properly configured
-        _googleSignIn = kIsWeb ? null : (googleSignIn ?? GoogleSignIn());
+        _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Stream of auth state changes
   Stream<AuthUser?> get authStateChanges => _firebaseAuth.authStateChanges().map(
@@ -114,60 +110,96 @@ class AuthService {
   /// Sign in with Google
   Future<AuthUser> signInWithGoogle() async {
     try {
-      firebase_auth.UserCredential userCredential;
+      print('Starting Google Sign-In process...');
       
       if (kIsWeb) {
-        // Web platform - use simple popup flow
+        print('Using web platform authentication flow');
+        
+        // Create a new provider
         final googleProvider = firebase_auth.GoogleAuthProvider();
-        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        
+        // Sign in with popup
+        final userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+        
+        final user = userCredential.user;
+        if (user == null) {
+          print('No user returned from Firebase');
+          throw AuthException('Google Sign-In failed: No user returned');
+        }
+        
+        print('Successfully signed in with Google: ${user.uid}');
+        await _ensureUserProfile(user);
+        return AuthUser.fromFirebaseUser(user);
       } else {
         // Mobile platforms
+        print('Using mobile platform authentication flow');
         final googleSignIn = GoogleSignIn();
         
         // Trigger the authentication flow
         final googleUser = await googleSignIn.signIn();
         
-        // User canceled the sign-in flow
         if (googleUser == null) {
+          print('Google Sign-In was canceled by user');
           throw AuthException('Google Sign-In was canceled by user');
         }
         
-        // Get authentication details
+        // Obtain the auth details from the request
         final googleAuth = await googleUser.authentication;
         
-        // Create credential
+        // Create a new credential
         final credential = firebase_auth.GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
         
         // Sign in with Firebase
-        userCredential = await _firebaseAuth.signInWithCredential(credential);
+        final userCredential = await _firebaseAuth.signInWithCredential(credential);
+        
+        final user = userCredential.user;
+        if (user == null) {
+          print('No user returned from Firebase');
+          throw AuthException('Google Sign-In failed: No user returned');
+        }
+        
+        print('Successfully signed in with Google: ${user.uid}');
+        await _ensureUserProfile(user);
+        return AuthUser.fromFirebaseUser(user);
       }
-      
-      final user = userCredential.user;
-      if (user == null) {
-        throw AuthException('Google Sign-In failed: No user returned');
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      print('Firebase Auth Exception: ${e.code} - ${e.message}');
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      print('Unexpected error during Google Sign-In: $e');
+      if (e is AuthException) {
+        throw e;
       }
+      throw AuthException('Google Sign-In failed: ${e.toString()}');
+    }
+  }
 
-      // Check if user profile exists
+  /// Ensure user profile exists
+  Future<void> _ensureUserProfile(firebase_auth.User user) async {
+    print('Checking if user profile exists');
+    try {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (!userDoc.exists) {
+        print('Creating new user profile');
         // Create profile for new user
         await _createUserProfile(
           uid: user.uid,
-          email: user.email!,
+          email: user.email ?? 'no-email@example.com', // Handle null email
           displayName: user.displayName,
           userType: UserType.seeker, // Default for Google Sign-In
           photoURL: user.photoURL,
         );
+      } else {
+        print('User profile already exists');
       }
-
-      return AuthUser.fromFirebaseUser(user);
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthException(e);
     } catch (e) {
-      throw AuthException('Google Sign-In failed: ${e.toString()}');
+      print('Error checking/creating user profile: $e');
+      // Don't throw here, just log the error
     }
   }
 
@@ -247,8 +279,8 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await _firebaseAuth.signOut();
-      if (_googleSignIn != null) {
-        await _googleSignIn!.signOut();
+      if (kIsWeb == false) {
+        await GoogleSignIn().signOut();
       }
     } catch (e) {
       throw AuthException('Sign out failed: ${e.toString()}');
@@ -308,6 +340,8 @@ class AuthService {
         return AuthException('The verification code is invalid', e.code);
       case 'invalid-verification-id':
         return AuthException('The verification ID is invalid', e.code);
+      case 'popup-closed-by-user':
+        return AuthException('The sign-in popup was closed before completing the sign-in', e.code);
       default:
         return AuthException('Authentication error: ${e.message}', e.code);
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _isPhoneAuth = false;
   bool _obscurePassword = true;
   UserType _userType = UserType.seeker;
+  bool _isVerificationSent = false;
 
   @override
   void initState() {
@@ -31,23 +33,43 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   void dispose() {
+    _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
     _phoneController.dispose();
     _smsCodeController.dispose();
-    _tabController.dispose();
+    
+    // Reset phone verification state if needed
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.isPhoneVerificationInProgress) {
+      // We can't cancel the verification, but we can reset the UI state
+      // by setting a new verification ID
+      _resetPhoneVerification();
+    }
+    
     super.dispose();
+  }
+  
+  // Reset phone verification state
+  void _resetPhoneVerification() {
+    setState(() {
+      _isVerificationSent = false;
+      _smsCodeController.clear();
+    });
   }
 
   void _togglePhoneAuth() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.isPhoneVerificationInProgress) {
-      authProvider.cancelPhoneVerification();
+      _resetPhoneVerification();
     }
     
     setState(() {
       _isPhoneAuth = !_isPhoneAuth;
+      if (_isPhoneAuth) {
+        _phoneController.clear();
+        _smsCodeController.clear();
+      }
     });
   }
 
@@ -71,9 +93,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
   }
 
-  Future<void> _signInWithGoogle() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.signInWithGoogle();
+  void _handleGoogleSignIn() async {
+    // Clear any previous snackbars
+    ScaffoldMessenger.of(context).clearSnackBars();
+    
+    // Show a snackbar to indicate the sign-in process has started
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Starting Google Sign-In...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    await context.read<AuthProvider>().signInWithGoogle();
+    
+    // Check if the widget is still mounted before showing success/error messages
+    if (!mounted) return;
+    
+    final authProvider = context.read<AuthProvider>();
+    
+    if (authProvider.error != null) {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else if (authProvider.currentUser != null) {
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign-In successful!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> _verifyPhoneNumber() async {
@@ -189,9 +244,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                           labelColor: Colors.white,
                           unselectedLabelColor: Colors.grey[700],
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerColor: Colors.transparent,
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
                           tabs: const [
-                            Tab(text: 'Sign In'),
-                            Tab(text: 'Sign Up'),
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Text('Sign In'),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Text('Sign Up'),
+                            ),
                           ],
                           onTap: (_) {
                             // Force rebuild to update form validation
@@ -548,16 +614,39 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             children: [
                               // Google Button
                               Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: authProvider.isLoading ? null : _signInWithGoogle,
-                                  icon: const Icon(Icons.g_translate, size: 20),
-                                  label: const Text('Google'),
+                                child: OutlinedButton(
+                                  onPressed: authProvider.isLoading ? null : _handleGoogleSignIn,
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(color: Colors.grey.shade300),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        height: 18,
+                                        width: 18,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'G',
+                                            style: TextStyle(
+                                              color: Colors.red[700],
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Text('Google'),
+                                    ],
                                   ),
                                 ),
                               ),

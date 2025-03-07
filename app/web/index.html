@@ -29,7 +29,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <!-- Google Sign-In Client ID -->
+  <!-- Google Sign-In Client ID - Required for Google Sign-In -->
   <meta name="google-signin-client_id" content="1023959081882-rvnvvgvl9qs9ot7e0v5aq9aqh7p0jtgj.apps.googleusercontent.com">
 
   <title>ProQuote</title>
@@ -53,6 +53,16 @@
     
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
+    
+    // Enable debugging for Firebase Auth
+    firebase.auth().onAuthStateChanged(function(user) {
+      console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
+    });
+    
+    // Log any Firebase Auth errors
+    firebase.auth().getRedirectResult().catch(function(error) {
+      console.error('Redirect result error:', error);
+    });
   </script>
 </head>
 <body>

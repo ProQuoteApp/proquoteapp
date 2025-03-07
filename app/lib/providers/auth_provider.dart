@@ -1,18 +1,18 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/auth_user.dart';
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
-import '../utils/mock_data.dart';
 
 /// Provider that manages authentication state
 class AuthProvider extends ChangeNotifier {
-  final AuthService? _authService;
+  AuthService? _authService;
+  StreamSubscription<AuthUser?>? _authSubscription;
   
   AuthUser? _currentUser;
   bool _isLoading = false;
   String? _error;
-  bool _useMockAuth = false;
+  bool _initialized = false;
   
   // Phone verification state
   String? _verificationId;
@@ -20,29 +20,38 @@ class AuthProvider extends ChangeNotifier {
   bool _isPhoneVerificationInProgress = false;
 
   /// Constructor
-  AuthProvider({AuthService? authService}) 
-      : _authService = authService {
-    _initializeAuth();
+  AuthProvider({AuthService? authService}) {
+    _authService = authService;
+    initialize();
   }
 
-  void _initializeAuth() {
+  /// Initialize the provider
+  Future<void> initialize() async {
+    if (_initialized) return;
+    
     try {
-      // Try to initialize the auth service
-      final authService = _authService ?? AuthService();
+      _isLoading = true;
+      notifyListeners();
       
-      // Listen to auth state changes
-      authService.authStateChanges.listen((user) {
+      // Initialize auth service if not provided
+      _authService ??= AuthService();
+      
+      // Listen for auth state changes
+      _authSubscription = _authService!.authStateChanges.listen((user) {
         _currentUser = user;
         notifyListeners();
       });
+      
+      // Check if there's a current user
+      _currentUser = _authService!.currentUser;
+      
+      _initialized = true;
     } catch (e) {
-      print('Error initializing auth service: $e');
-      // Fall back to mock authentication for testing
-      _useMockAuth = true;
-      // Set a mock user for testing
-      if (kDebugMode) {
-        _currentUser = MockData.mockAuthUser;
-      }
+      _error = 'Failed to initialize authentication: $e';
+      print('Auth Provider initialization error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -56,7 +65,7 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
 
   /// Whether the user is authenticated
-  bool get isAuthenticated => _currentUser != null || _useMockAuth;
+  bool get isAuthenticated => _currentUser != null;
   
   /// Whether phone verification is in progress
   bool get isPhoneVerificationInProgress => _isPhoneVerificationInProgress;
@@ -71,10 +80,8 @@ class AuthProvider extends ChangeNotifier {
     required UserType userType,
     String? displayName,
   }) async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = MockData.mockAuthUser;
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
@@ -84,16 +91,17 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService!.signUpWithEmailAndPassword(
+      final user = await _authService!.signUpWithEmailAndPassword(
         email: email,
         password: password,
         userType: userType,
         displayName: displayName,
       );
+      _currentUser = user;
     } on AuthException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = 'An unexpected error occurred';
+      _error = 'An unexpected error occurred: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -105,10 +113,8 @@ class AuthProvider extends ChangeNotifier {
     required String email,
     required String password,
   }) async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = MockData.mockAuthUser;
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
@@ -118,14 +124,15 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService!.signInWithEmailAndPassword(
+      final user = await _authService!.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      _currentUser = user;
     } on AuthException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = 'An unexpected error occurred';
+      _error = 'An unexpected error occurred: $e';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -134,32 +141,39 @@ class AuthProvider extends ChangeNotifier {
   
   /// Sign in with Google
   Future<void> signInWithGoogle() async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = MockData.mockAuthUser;
+    if (_isLoading) return;
+    
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
-
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
+    
     try {
-      await _authService!.signInWithGoogle();
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+      
+      print('Provider: Starting Google Sign-In');
+      
+      final user = await _authService!.signInWithGoogle();
+      
+      _currentUser = user;
+      _error = null;
+      print('Provider: Google Sign-In successful: ${user.uid}');
+      
     } on AuthException catch (e) {
-      // Handle specific auth exceptions
-      if (e.message.contains('canceled by user')) {
-        // User canceled - don't show as error
-        _error = null;
-      } else {
-        _error = e.message;
-        print('Google Sign-In error: ${e.message}');
+      print('Provider: Google Sign-In error: ${e.message}');
+      _error = e.message;
+      
+      if (e.code == 'popup-closed-by-user') {
+        _error = 'Sign-in was canceled. Please try again.';
+      } else if (e.code == 'popup-blocked') {
+        _error = 'Sign-in popup was blocked. Please allow popups for this site.';
       }
     } catch (e) {
-      _error = 'Google Sign-In failed. Please try again.';
-      print('Google Sign-In unexpected error: $e');
+      print('Provider: Unexpected Google Sign-In error: $e');
+      _error = 'An unexpected error occurred. Please try again.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -168,11 +182,8 @@ class AuthProvider extends ChangeNotifier {
   
   /// Start phone number verification
   Future<void> verifyPhoneNumber(String phoneNumber) async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _verificationId = 'mock-verification-id';
-      _isPhoneVerificationInProgress = true;
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
@@ -222,17 +233,14 @@ class AuthProvider extends ChangeNotifier {
     required UserType userType,
     String? displayName,
   }) async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = MockData.mockAuthUser;
-      _isPhoneVerificationInProgress = false;
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
 
     if (_verificationId == null) {
-      _error = 'Verification ID is missing. Please restart phone verification.';
+      _error = 'Verification ID not available';
       notifyListeners();
       return;
     }
@@ -242,37 +250,31 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authService!.signInWithPhoneVerificationCode(
+      final user = await _authService!.signInWithPhoneVerificationCode(
         verificationId: _verificationId!,
         smsCode: smsCode,
         userType: userType,
         displayName: displayName,
       );
+      
+      _currentUser = user;
       _isPhoneVerificationInProgress = false;
+      _verificationId = null;
+      _resendToken = null;
     } on AuthException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = 'Failed to verify code: ${e.toString()}';
+      _error = 'Failed to sign in with verification code: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
-  
-  /// Cancel phone verification
-  void cancelPhoneVerification() {
-    _isPhoneVerificationInProgress = false;
-    _verificationId = null;
-    _resendToken = null;
-    notifyListeners();
-  }
 
   /// Sign out
   Future<void> signOut() async {
-    if (_useMockAuth) {
-      // Mock implementation for testing
-      await Future.delayed(const Duration(seconds: 1));
-      _currentUser = null;
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
       notifyListeners();
       return;
     }
@@ -283,19 +285,25 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authService!.signOut();
-    } on AuthException catch (e) {
-      _error = e.message;
+      _currentUser = null;
     } catch (e) {
-      _error = 'An unexpected error occurred';
+      _error = 'Failed to sign out: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Clear any error messages
-  void clearError() {
+  /// Reset error
+  void resetError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Dispose of resources
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 } 
