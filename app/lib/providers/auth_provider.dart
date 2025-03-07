@@ -16,6 +16,8 @@ class AuthProvider extends ChangeNotifier {
   
   // Phone verification state
   String? _verificationId;
+  // The resendToken can be used to resend the verification code without
+  // triggering the reCAPTCHA flow again on Android devices
   int? _resendToken;
   bool _isPhoneVerificationInProgress = false;
 
@@ -72,6 +74,9 @@ class AuthProvider extends ChangeNotifier {
   
   /// Verification ID for phone authentication
   String? get verificationId => _verificationId;
+  
+  /// Resend token for phone verification
+  int? get resendToken => _resendToken;
 
   /// Sign up with email and password
   Future<void> signUpWithEmailAndPassword({

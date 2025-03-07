@@ -343,7 +343,6 @@ class EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final authUser = authProvider.currentUser;
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
@@ -77,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     
     setState(() {
       _isPhoneAuth = !_isPhoneAuth;
+      _isVerificationSent = false;
       if (_isPhoneAuth) {
         _phoneController.clear();
         _smsCodeController.clear();
@@ -147,6 +147,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
     
     await _authProvider.verifyPhoneNumber(_phoneController.text.trim());
+    
+    // Set verification sent flag if successful
+    if (_authProvider.verificationId != null) {
+      setState(() {
+        _isVerificationSent = true;
+      });
+    }
   }
 
   Future<void> _verifyPhoneCode() async {
@@ -467,6 +474,29 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             return null;
                           },
                         ),
+                        if (_isVerificationSent) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.check_circle, color: Colors.green.shade700, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Verification code sent! Please check your phone.',
+                                    style: TextStyle(color: Colors.green.shade700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ]
                       // Verification Code
                       else ...[

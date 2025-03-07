@@ -18,7 +18,8 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   
   String _selectedCategory = MockData.serviceCategories[0]['name'] as String;
   DateTime _preferredDate = DateTime.now().add(const Duration(days: 3));
-  final List<String> _images = [];
+  // TODO: Implement image upload functionality
+  // final List<String> _images = [];
 
   @override
   void dispose() {
