@@ -7,12 +7,23 @@ import 'package:proquote/widgets/service_card.dart';
 import 'package:proquote/widgets/job_card.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
+import 'package:proquote/providers/user_provider.dart';
+import 'package:proquote/providers/auth_provider.dart';
+import 'package:proquote/utils/constants.dart';
+import 'package:proquote/widgets/user_avatar.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Get user data from providers
+    final userProvider = Provider.of<UserProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = userProvider.currentUser;
+    final authUser = authProvider.currentUser;
+    
     // Get screen width to handle responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final isLargeScreen = screenWidth > 900;
@@ -36,11 +47,18 @@ class HomeScreen extends StatelessWidget {
               // Navigate to notifications
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              context.go('/profile');
-            },
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: GestureDetector(
+              onTap: () {
+                context.go('/profile');
+              },
+              child: UserAvatar(
+                user: user,
+                authUser: authUser,
+                radius: AppConstants.smallAvatarRadius,
+              ),
+            ),
           ),
         ],
       ),
@@ -48,29 +66,29 @@ class HomeScreen extends StatelessWidget {
         child: SizedBox(
           width: contentWidth,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppConstants.screenPadding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Welcome section
                 Text(
-                  'Welcome, ${MockData.currentUser.name?.split(' ')[0] ?? 'User'}!',
+                  'Welcome, ${_getFirstName(user, authUser)}!',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppConstants.textSpacing),
                 Text(
                   'What service do you need today?',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: Colors.grey[600],
                       ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppConstants.sectionSpacing),
 
                 // Search bar
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.05),
@@ -84,7 +102,7 @@ class HomeScreen extends StatelessWidget {
                       hintText: 'Search for services...',
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -94,7 +112,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppConstants.sectionSpacing),
 
                 // Service categories
                 Text(
@@ -354,6 +372,12 @@ class HomeScreen extends StatelessWidget {
         label: const Text('New Job'),
       ),
     );
+  }
+  
+  /// Get the first name of the user
+  String _getFirstName(user, authUser) {
+    final fullName = user?.name ?? authUser?.displayName ?? 'User';
+    return fullName.split(' ')[0];
   }
 }
 

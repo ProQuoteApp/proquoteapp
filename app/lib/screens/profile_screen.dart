@@ -6,6 +6,7 @@ import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/models/auth_user.dart';
 import 'package:proquote/models/user_profile.dart';
 import 'package:proquote/utils/constants.dart';
+import 'package:proquote/widgets/user_avatar.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -24,6 +25,23 @@ class ProfileScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Profile'),
         actions: [
+          if (user != null && firestoreAvailable)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditProfileScreen(user: user),
+                  ),
+                ).then((_) {
+                  // Refresh user data when returning from edit screen
+                  if (authUser != null) {
+                    userProvider.loadUser(authUser);
+                  }
+                });
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -45,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
                         // Show error message if there is one
                         if (error != null)
                           Container(
-                            margin: const EdgeInsets.only(top: 16),
+                            margin: const EdgeInsets.only(top: AppConstants.itemSpacing),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: Colors.orange.shade50,
@@ -66,41 +84,19 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppConstants.sectionSpacing),
                         Center(
-                          child: Stack(
-                            children: [
-                              CircleAvatar(
-                                radius: 60,
-                                backgroundColor: Colors.grey[200],
-                                child: _buildProfileImage(user, authUser),
-                              ),
-                              if (firestoreAvailable)
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).primaryColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.edit,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                          child: UserAvatar(
+                            user: user,
+                            authUser: authUser,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppConstants.itemSpacing),
                         Text(
                           _getName(user, authUser),
                           style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppConstants.textSpacing),
                         Text(
                           _getEmail(user, authUser),
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -110,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
                         
                         // Show profile creation button if no Firestore profile exists
                         if (user == null && authUser != null && firestoreAvailable) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppConstants.sectionSpacing),
                           ElevatedButton.icon(
                             onPressed: () {
                               userProvider.createUserProfileIfNeeded(authUser);
@@ -124,7 +120,7 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppConstants.itemSpacing),
                           const Text(
                             'Create a profile to save your preferences and job history',
                             textAlign: TextAlign.center,
@@ -136,7 +132,7 @@ class ProfileScreen extends StatelessWidget {
                         
                         // Show Firestore unavailable message
                         if (!firestoreAvailable) ...[
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppConstants.sectionSpacing),
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -161,7 +157,7 @@ class ProfileScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: AppConstants.textSpacing),
                                 Text(
                                   'Your profile data is not being saved to the cloud. '
                                   'This may be due to Firestore security rules or connectivity issues.',
@@ -173,7 +169,7 @@ class ProfileScreen extends StatelessWidget {
                         ],
                         
                         if (user != null || !firestoreAvailable) ...[
-                          const SizedBox(height: 32),
+                          const SizedBox(height: AppConstants.sectionSpacing),
                           _buildInfoSection(context, 'Account Information'),
                           _buildInfoTile(
                             context,
@@ -193,7 +189,7 @@ class ProfileScreen extends StatelessWidget {
                             _getFormattedDate(user?.createdAt ?? authUser?.createdAt ?? DateTime.now()),
                             Icons.calendar_today,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppConstants.sectionSpacing),
                           _buildInfoSection(context, 'Preferences'),
                           SwitchListTile(
                             title: const Text('Notifications'),
@@ -213,7 +209,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ],
                         
-                        const SizedBox(height: 24),
+                        const SizedBox(height: AppConstants.sectionSpacing),
                         _buildInfoSection(context, 'Support'),
                         _buildInfoTile(
                           context,
@@ -244,47 +240,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileImage(User? user, dynamic authUser) {
-    // First try to use the Firestore profile image
-    final profileUrl = user?.profileImageUrl;
-    
-    // If no Firestore profile, try to use the auth user photo URL
-    final authPhotoUrl = authUser?.photoURL;
-    
-    final imageUrl = profileUrl ?? authPhotoUrl;
-    
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return ClipOval(
-        child: Image.network(
-          imageUrl,
-          width: 120,
-          height: 120,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            print('Error loading profile image: $error');
-            return const Icon(
-              Icons.person,
-              size: 60,
-              color: Colors.grey,
-            );
-          },
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          },
-        ),
-      );
-    } else {
-      return const Icon(
-        Icons.person,
-        size: 60,
-        color: Colors.grey,
-      );
-    }
-  }
-  
   String _getName(User? user, dynamic authUser) {
     return user?.name ?? authUser?.displayName ?? 'No Name';
   }
@@ -328,6 +283,254 @@ class ProfileScreen extends StatelessWidget {
       subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
       trailing: showTrailing ? const Icon(Icons.arrow_forward_ios, size: 16) : null,
       onTap: showTrailing ? () {} : null,
+    );
+  }
+}
+
+/// Screen for editing user profile
+class EditProfileScreen extends StatefulWidget {
+  final User user;
+
+  const EditProfileScreen({super.key, required this.user});
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.user.name);
+    _phoneController = TextEditingController(text: widget.user.phoneNumber);
+    _addressController = TextEditingController(text: widget.user.address);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final authUser = authProvider.currentUser;
+
+      if (authUser == null) {
+        setState(() {
+          _error = 'User not authenticated';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Create a new UserProfile with updated values
+      final updatedUser = widget.user;
+      
+      // Create a UserProfile object with the updated values
+      final updatedProfile = UserProfile(
+        uid: authUser.uid,
+        displayName: _nameController.text,
+        email: updatedUser.email,
+        phoneNumber: _phoneController.text,
+        photoURL: updatedUser.profileImageUrl,
+        address: _addressController.text,
+        userType: updatedUser.isServiceProvider ? UserType.provider : UserType.seeker,
+        isProfileComplete: true,
+        createdAt: updatedUser.createdAt,
+        lastUpdatedAt: DateTime.now(),
+      );
+      
+      // Update the profile using the service
+      await Provider.of<UserProvider>(context, listen: false)
+          .updateUserProfile(authUser, updatedProfile);
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'Error updating profile: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Profile'),
+        actions: [
+          TextButton(
+            onPressed: _isLoading ? null : _saveProfile,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Save',
+                    style: TextStyle(color: Colors.white),
+                  ),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(AppConstants.screenPadding),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_error != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: AppConstants.itemSpacing),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade800),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: Colors.red.shade800),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                Center(
+                  child: UserAvatar(
+                    user: widget.user,
+                    authUser: authProvider.currentUser,
+                    showEditButton: true,
+                    onEditTap: () {
+                      // TODO: Implement image upload
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Profile image upload not implemented yet'),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppConstants.sectionSpacing),
+                Text(
+                  'Personal Information',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: AppConstants.itemSpacing),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppConstants.itemSpacing),
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.phone),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: AppConstants.itemSpacing),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(
+                    labelText: 'Address',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppConstants.sectionSpacing),
+                Text(
+                  'Email address cannot be changed',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: AppConstants.itemSpacing),
+                TextFormField(
+                  initialValue: widget.user.email,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
+                  ),
+                  enabled: false,
+                ),
+                const SizedBox(height: AppConstants.sectionSpacing),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Save Changes'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 } 
