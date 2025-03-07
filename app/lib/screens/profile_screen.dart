@@ -20,10 +20,23 @@ class ProfileScreen extends StatelessWidget {
     final isLoading = userProvider.isLoading;
     final error = userProvider.error;
     final firestoreAvailable = userProvider.firestoreAvailable;
+    
+    // Get screen width to handle responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 900;
+    final isMediumScreen = screenWidth > 600 && screenWidth <= 900;
+    
+    // Calculate content width based on screen size
+    final contentWidth = isLargeScreen 
+        ? 900.0 
+        : isMediumScreen 
+            ? screenWidth * 0.9 
+            : screenWidth;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        centerTitle: isLargeScreen,
         actions: [
           if (user != null && firestoreAvailable)
             IconButton(
@@ -50,192 +63,195 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.screenPadding),
-        child: isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : (user == null && authUser == null)
-                ? const Center(child: Text('No user data available'))
-                : SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Show error message if there is one
-                        if (error != null)
-                          Container(
-                            margin: const EdgeInsets.only(top: AppConstants.itemSpacing),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.orange.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    error,
-                                    style: TextStyle(color: Colors.orange.shade800),
+      body: Center(
+        child: SizedBox(
+          width: contentWidth,
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : (user == null && authUser == null)
+                  ? const Center(child: Text('No user data available'))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(AppConstants.screenPadding),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Show error message if there is one
+                          if (error != null)
+                            Container(
+                              margin: const EdgeInsets.only(top: AppConstants.itemSpacing),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      error,
+                                      style: TextStyle(color: Colors.orange.shade800),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                          
-                        const SizedBox(height: AppConstants.sectionSpacing),
-                        Center(
-                          child: UserAvatar(
-                            user: user,
-                            authUser: authUser,
-                          ),
-                        ),
-                        const SizedBox(height: AppConstants.itemSpacing),
-                        Text(
-                          _getName(user, authUser),
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: AppConstants.textSpacing),
-                        Text(
-                          _getEmail(user, authUser),
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey[600],
-                              ),
-                        ),
-                        
-                        // Show profile creation button if no Firestore profile exists
-                        if (user == null && authUser != null && firestoreAvailable) ...[
+                            
                           const SizedBox(height: AppConstants.sectionSpacing),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              userProvider.createUserProfileIfNeeded(authUser);
-                            },
-                            icon: const Icon(Icons.person_add),
-                            label: const Text('Create Profile'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
+                          Center(
+                            child: UserAvatar(
+                              user: user,
+                              authUser: authUser,
                             ),
                           ),
                           const SizedBox(height: AppConstants.itemSpacing),
-                          const Text(
-                            'Create a profile to save your preferences and job history',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.grey,
-                            ),
+                          Text(
+                            _getName(user, authUser),
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
-                        ],
-                        
-                        // Show Firestore unavailable message
-                        if (!firestoreAvailable) ...[
-                          const SizedBox(height: AppConstants.sectionSpacing),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.shade200),
+                          const SizedBox(height: AppConstants.textSpacing),
+                          Text(
+                            _getEmail(user, authUser),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                          ),
+                          
+                          // Show profile creation button if no Firestore profile exists
+                          if (user == null && authUser != null && firestoreAvailable) ...[
+                            const SizedBox(height: AppConstants.sectionSpacing),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                userProvider.createUserProfileIfNeeded(authUser);
+                              },
+                              icon: const Icon(Icons.person_add),
+                              label: const Text('Create Profile'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                              ),
                             ),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.info, color: Colors.blue.shade800),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Using local data only',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue.shade800,
+                            const SizedBox(height: AppConstants.itemSpacing),
+                            const Text(
+                              'Create a profile to save your preferences and job history',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                          
+                          // Show Firestore unavailable message
+                          if (!firestoreAvailable) ...[
+                            const SizedBox(height: AppConstants.sectionSpacing),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.info, color: Colors.blue.shade800),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Using local data only',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue.shade800,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: AppConstants.textSpacing),
-                                Text(
-                                  'Your profile data is not being saved to the cloud. '
-                                  'This may be due to Firestore security rules or connectivity issues.',
-                                  style: TextStyle(color: Colors.blue.shade800),
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppConstants.textSpacing),
+                                  Text(
+                                    'Your profile data is not being saved to the cloud. '
+                                    'This may be due to Firestore security rules or connectivity issues.',
+                                    style: TextStyle(color: Colors.blue.shade800),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                        
-                        if (user != null || !firestoreAvailable) ...[
+                          ],
+                          
+                          if (user != null || !firestoreAvailable) ...[
+                            const SizedBox(height: AppConstants.sectionSpacing),
+                            _buildInfoSection(context, 'Account Information'),
+                            _buildInfoTile(
+                              context,
+                              'Phone Number',
+                              user?.phoneNumber ?? authUser?.phoneNumber ?? 'Not provided',
+                              Icons.phone,
+                            ),
+                            _buildInfoTile(
+                              context,
+                              'Location',
+                              user?.address ?? 'Not provided',
+                              Icons.location_on,
+                            ),
+                            _buildInfoTile(
+                              context,
+                              'Member Since',
+                              _getFormattedDate(user?.createdAt ?? authUser?.createdAt ?? DateTime.now()),
+                              Icons.calendar_today,
+                            ),
+                            const SizedBox(height: AppConstants.sectionSpacing),
+                            _buildInfoSection(context, 'Preferences'),
+                            SwitchListTile(
+                              title: const Text('Notifications'),
+                              subtitle: const Text('Receive push notifications'),
+                              value: true, // This would come from user preferences
+                              onChanged: firestoreAvailable ? (value) {
+                                // TODO: Implement notification toggle
+                              } : null,
+                            ),
+                            SwitchListTile(
+                              title: const Text('Dark Mode'),
+                              subtitle: const Text('Use dark theme'),
+                              value: false, // TODO: Implement theme toggle
+                              onChanged: (value) {
+                                // TODO: Implement theme toggle
+                              },
+                            ),
+                          ],
+                          
                           const SizedBox(height: AppConstants.sectionSpacing),
-                          _buildInfoSection(context, 'Account Information'),
+                          _buildInfoSection(context, 'Support'),
                           _buildInfoTile(
                             context,
-                            'Phone Number',
-                            user?.phoneNumber ?? authUser?.phoneNumber ?? 'Not provided',
-                            Icons.phone,
-                          ),
-                          _buildInfoTile(
-                            context,
-                            'Location',
-                            user?.address ?? 'Not provided',
-                            Icons.location_on,
+                            'Help Center',
+                            '',
+                            Icons.help,
+                            showTrailing: true,
                           ),
                           _buildInfoTile(
                             context,
-                            'Member Since',
-                            _getFormattedDate(user?.createdAt ?? authUser?.createdAt ?? DateTime.now()),
-                            Icons.calendar_today,
+                            'Terms of Service',
+                            '',
+                            Icons.description,
+                            showTrailing: true,
                           ),
-                          const SizedBox(height: AppConstants.sectionSpacing),
-                          _buildInfoSection(context, 'Preferences'),
-                          SwitchListTile(
-                            title: const Text('Notifications'),
-                            subtitle: const Text('Receive push notifications'),
-                            value: true, // This would come from user preferences
-                            onChanged: firestoreAvailable ? (value) {
-                              // TODO: Implement notification toggle
-                            } : null,
+                          _buildInfoTile(
+                            context,
+                            'Privacy Policy',
+                            '',
+                            Icons.privacy_tip,
+                            showTrailing: true,
                           ),
-                          SwitchListTile(
-                            title: const Text('Dark Mode'),
-                            subtitle: const Text('Use dark theme'),
-                            value: false, // TODO: Implement theme toggle
-                            onChanged: (value) {
-                              // TODO: Implement theme toggle
-                            },
-                          ),
+                          const SizedBox(height: 40),
                         ],
-                        
-                        const SizedBox(height: AppConstants.sectionSpacing),
-                        _buildInfoSection(context, 'Support'),
-                        _buildInfoTile(
-                          context,
-                          'Help Center',
-                          '',
-                          Icons.help,
-                          showTrailing: true,
-                        ),
-                        _buildInfoTile(
-                          context,
-                          'Terms of Service',
-                          '',
-                          Icons.description,
-                          showTrailing: true,
-                        ),
-                        _buildInfoTile(
-                          context,
-                          'Privacy Policy',
-                          '',
-                          Icons.privacy_tip,
-                          showTrailing: true,
-                        ),
-                        const SizedBox(height: 40),
-                      ],
+                      ),
                     ),
-                  ),
+        ),
       ),
     );
   }
@@ -294,10 +310,10 @@ class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key, required this.user});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  State<EditProfileScreen> createState() => EditProfileScreenState();
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
@@ -385,9 +401,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     
+    // Get screen width to handle responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 900;
+    final isMediumScreen = screenWidth > 600 && screenWidth <= 900;
+    
+    // Calculate content width based on screen size
+    final contentWidth = isLargeScreen 
+        ? 900.0 
+        : isMediumScreen 
+            ? screenWidth * 0.9 
+            : screenWidth;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
+        centerTitle: isLargeScreen,
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
@@ -407,126 +436,129 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppConstants.screenPadding),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_error != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: AppConstants.itemSpacing),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red.shade800),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _error!,
-                            style: TextStyle(color: Colors.red.shade800),
+      body: Center(
+        child: SizedBox(
+          width: contentWidth,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppConstants.screenPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppConstants.itemSpacing),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade800),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(color: Colors.red.shade800),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+
+                  Center(
+                    child: UserAvatar(
+                      user: widget.user,
+                      authUser: authProvider.currentUser,
+                      showEditButton: true,
+                      onEditTap: () {
+                        // TODO: Implement image upload
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profile image upload not implemented yet'),
+                          ),
+                        );
+                      },
                     ),
                   ),
-
-                Center(
-                  child: UserAvatar(
-                    user: widget.user,
-                    authUser: authProvider.currentUser,
-                    showEditButton: true,
-                    onEditTap: () {
-                      // TODO: Implement image upload
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile image upload not implemented yet'),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  Text(
+                    'Personal Information',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                      );
+                  ),
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
                     },
                   ),
-                ),
-                const SizedBox(height: AppConstants.sectionSpacing),
-                Text(
-                  'Personal Information',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: AppConstants.itemSpacing),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppConstants.itemSpacing),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Phone Number',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.phone),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: AppConstants.itemSpacing),
-                TextFormField(
-                  controller: _addressController,
-                  decoration: const InputDecoration(
-                    labelText: 'Address',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.location_on),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: AppConstants.sectionSpacing),
-                Text(
-                  'Email address cannot be changed',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.itemSpacing),
-                TextFormField(
-                  initialValue: widget.user.email,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email),
-                  ),
-                  enabled: false,
-                ),
-                const SizedBox(height: AppConstants.sectionSpacing),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Phone Number',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.phone),
                     ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator()
-                        : const Text('Save Changes'),
+                    keyboardType: TextInputType.phone,
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  TextFormField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: 'Address',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_on),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  Text(
+                    'Email address cannot be changed',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  TextFormField(
+                    initialValue: widget.user.email,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
+                    ),
+                    enabled: false,
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isLoading
+                          ? const CircularProgressIndicator()
+                          : const Text('Save Changes'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

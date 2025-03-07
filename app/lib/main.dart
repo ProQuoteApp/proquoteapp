@@ -8,6 +8,8 @@ import 'package:proquote/screens/job_details_screen.dart';
 import 'package:proquote/screens/profile_screen.dart';
 import 'package:proquote/screens/provider_list_screen.dart';
 import 'package:proquote/screens/login_screen.dart';
+import 'package:proquote/screens/jobs_screen.dart';
+import 'package:proquote/screens/messages_screen.dart';
 import 'package:proquote/theme/app_theme.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/providers/auth_provider.dart';
@@ -193,90 +195,6 @@ class AppBottomNavigationBar extends StatelessWidget {
           context.go(_items[index].$3);
         }
       },
-    );
-  }
-}
-
-// Placeholder screens for bottom navigation
-class JobsScreen extends StatelessWidget {
-  const JobsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Jobs'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.screenPadding),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: MockData.jobs.length,
-          itemBuilder: (context, index) {
-            final job = MockData.jobs[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: ListTile(
-                title: Text(job.title),
-                subtitle: Text(job.status),
-                trailing: const Icon(Icons.arrow_forward_ios),
-                onTap: () {
-                  context.go('/job/${job.id}');
-                },
-              ),
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.go('/create-job');
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class MessagesScreen extends StatelessWidget {
-  const MessagesScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messages'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.screenPadding),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.message,
-                size: 64,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No messages yet',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your conversations with service providers will appear here',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
