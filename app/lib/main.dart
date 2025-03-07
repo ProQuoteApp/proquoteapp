@@ -8,8 +8,14 @@ import 'package:proquote/screens/profile_screen.dart';
 import 'package:proquote/screens/provider_list_screen.dart';
 import 'package:proquote/theme/app_theme.dart';
 import 'package:proquote/utils/mock_data.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 

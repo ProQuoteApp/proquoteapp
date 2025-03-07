@@ -38,8 +38,17 @@ dependencies:
   provider: ^6.1.2
   flutter_svg: ^2.0.10+1
   intl: ^0.19.0
-  cached_network_image: ^3.3.1
-  flutter_rating_bar: ^4.0.1
+  
+  # Firebase dependencies
+  firebase_core: ^2.25.4
+  firebase_auth: ^4.17.4
+  cloud_firestore: ^4.15.4
+  firebase_storage: ^11.6.5
+  firebase_analytics: ^10.8.5
+  firebase_crashlytics: ^3.4.13
+  firebase_messaging: ^14.7.15
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^5.0.0
 
 dev_dependencies:
   flutter_test:
