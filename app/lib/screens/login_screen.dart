@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
+import '../utils/constants.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,11 +25,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _obscurePassword = true;
   UserType _userType = UserType.seeker;
   bool _isVerificationSent = false;
+  
+  // Store a reference to the auth provider
+  late AuthProvider _authProvider;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store a reference to the auth provider
+    _authProvider = Provider.of<AuthProvider>(context, listen: false);
   }
 
   @override
@@ -36,14 +47,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
     _phoneController.dispose();
     _smsCodeController.dispose();
     
     // Reset phone verification state if needed
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.isPhoneVerificationInProgress) {
+    if (_authProvider.isPhoneVerificationInProgress) {
       // We can't cancel the verification, but we can reset the UI state
-      // by setting a new verification ID
       _resetPhoneVerification();
     }
     
@@ -59,8 +69,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   void _togglePhoneAuth() {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.isPhoneVerificationInProgress) {
+    if (_authProvider.isPhoneVerificationInProgress) {
       _resetPhoneVerification();
     }
     
@@ -75,17 +84,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   Future<void> _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
       if (_tabController.index == 1) { // Sign Up
-        await authProvider.signUpWithEmailAndPassword(
+        await _authProvider.signUpWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           userType: _userType,
           displayName: _nameController.text.trim(),
         );
       } else { // Sign In
-        await authProvider.signInWithEmailAndPassword(
+        await _authProvider.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -105,22 +112,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       ),
     );
     
-    await context.read<AuthProvider>().signInWithGoogle();
+    await _authProvider.signInWithGoogle();
     
     // Check if the widget is still mounted before showing success/error messages
     if (!mounted) return;
     
-    final authProvider = context.read<AuthProvider>();
-    
-    if (authProvider.error != null) {
+    if (_authProvider.error != null) {
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error!),
+          content: Text(_authProvider.error!),
           backgroundColor: Colors.red,
         ),
       );
-    } else if (authProvider.currentUser != null) {
+    } else if (_authProvider.currentUser != null) {
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -139,8 +144,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       return;
     }
     
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.verifyPhoneNumber(_phoneController.text.trim());
+    await _authProvider.verifyPhoneNumber(_phoneController.text.trim());
   }
 
   Future<void> _verifyPhoneCode() async {
@@ -151,8 +155,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       return;
     }
     
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    await authProvider.signInWithPhoneVerificationCode(
+    await _authProvider.signInWithPhoneVerificationCode(
       smsCode: _smsCodeController.text.trim(),
       userType: _userType,
       displayName: _tabController.index == 1 ? _nameController.text.trim() : null,
@@ -161,8 +164,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final isVerificationSent = authProvider.isPhoneVerificationInProgress && authProvider.verificationId != null;
+    final isVerificationSent = _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null;
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
     
@@ -173,20 +175,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(AppConstants.screenPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // App Logo and Title
                     Column(
                       children: [
-                        const SizedBox(height: 20),
+                        const SizedBox(height: AppConstants.sectionSpacing),
                         Icon(
                           Icons.handyman_rounded,
                           size: 64,
                           color: theme.primaryColor,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppConstants.itemSpacing),
                         Text(
                           'ProQuote',
                           style: theme.textTheme.headlineMedium?.copyWith(
@@ -194,19 +196,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             color: theme.primaryColor,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppConstants.textSpacing),
                         Text(
                           'Connect with service providers',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             color: Colors.grey[600],
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: AppConstants.sectionSpacing),
                       ],
                     ),
                     
                     // Error Message
-                    if (authProvider.error != null)
+                    if (_authProvider.error != null)
                       Container(
                         padding: const EdgeInsets.all(12.0),
                         margin: const EdgeInsets.only(bottom: 24.0),
@@ -221,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                authProvider.error!,
+                                _authProvider.error!,
                                 style: TextStyle(color: Colors.red.shade700),
                               ),
                             ),
@@ -543,7 +545,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             width: double.infinity,
                             height: 50,
                             child: ElevatedButton(
-                              onPressed: authProvider.isLoading
+                              onPressed: _authProvider.isLoading
                                   ? null
                                   : (_isPhoneAuth
                                       ? (isVerificationSent ? _verifyPhoneCode : _verifyPhoneNumber)
@@ -556,7 +558,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              child: authProvider.isLoading
+                              child: _authProvider.isLoading
                                   ? const SizedBox(
                                       height: 24,
                                       width: 24,
@@ -615,7 +617,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               // Google Button
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: authProvider.isLoading ? null : _handleGoogleSignIn,
+                                  onPressed: _authProvider.isLoading ? null : _handleGoogleSignIn,
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(color: Colors.grey.shade300),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -654,7 +656,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               // Phone Button
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: authProvider.isLoading ? null : _togglePhoneAuth,
+                                  onPressed: _authProvider.isLoading ? null : _togglePhoneAuth,
                                   icon: const Icon(Icons.phone, size: 20),
                                   label: Text(_isPhoneAuth ? 'Email' : 'Phone'),
                                   style: OutlinedButton.styleFrom(
