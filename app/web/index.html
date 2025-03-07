@@ -29,8 +29,41 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>app</title>
+  <!-- Google Sign-In Client ID - Required for Google Sign-In -->
+  <meta name="google-signin-client_id" content="1023959081882-rvnvvgvl9qs9ot7e0v5aq9aqh7p0jtgj.apps.googleusercontent.com">
+
+  <title>ProQuote</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  
+  <script>
+    // Initialize Firebase with your web configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBNs4NvLzCsLY1yAYohxff1zKdFzHIMtwY",
+      authDomain: "proquote-77221.firebaseapp.com",
+      projectId: "proquote-77221",
+      storageBucket: "proquote-77221.firebasestorage.app",
+      messagingSenderId: "1023959081882",
+      appId: "1:1023959081882:web:c4328ea9ce48d4de931023",
+      measurementId: "G-3YJ5V4F5WY"
+    };
+    
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    
+    // Enable debugging for Firebase Auth
+    firebase.auth().onAuthStateChanged(function(user) {
+      console.log('Auth state changed:', user ? 'User logged in' : 'User logged out');
+    });
+    
+    // Log any Firebase Auth errors
+    firebase.auth().getRedirectResult().catch(function(error) {
+      console.error('Redirect result error:', error);
+    });
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

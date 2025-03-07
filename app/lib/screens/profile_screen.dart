@@ -1,303 +1,333 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:proquote/models/user.dart';
-import 'package:proquote/utils/mock_data.dart';
+import 'package:provider/provider.dart';
+import 'package:proquote/providers/auth_provider.dart';
+import 'package:proquote/providers/user_provider.dart';
+import 'package:proquote/models/auth_user.dart';
+import 'package:proquote/models/user_profile.dart';
+import 'package:proquote/utils/constants.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final User user = MockData.currentUser;
+    final authProvider = Provider.of<AuthProvider>(context);
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.currentUser;
+    final authUser = authProvider.currentUser;
+    final isLoading = userProvider.isLoading;
+    final error = userProvider.error;
+    final firestoreAvailable = userProvider.firestoreAvailable;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Profile'),
+        title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              // Navigate to settings
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await authProvider.signOut();
             },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile header
-            Center(
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: CachedNetworkImageProvider(
-                      user.profileImageUrl,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.screenPadding),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : (user == null && authUser == null)
+                ? const Center(child: Text('No user data available'))
+                : SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Show error message if there is one
+                        if (error != null)
+                          Container(
+                            margin: const EdgeInsets.only(top: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    error,
+                                    style: TextStyle(color: Colors.orange.shade800),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                        const SizedBox(height: 24),
+                        Center(
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Colors.grey[200],
+                                child: _buildProfileImage(user, authUser),
+                              ),
+                              if (firestoreAvailable)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).primaryColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.edit,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _getName(user, authUser),
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getEmail(user, authUser),
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.grey[600],
+                              ),
+                        ),
+                        
+                        // Show profile creation button if no Firestore profile exists
+                        if (user == null && authUser != null && firestoreAvailable) ...[
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              userProvider.createUserProfileIfNeeded(authUser);
+                            },
+                            icon: const Icon(Icons.person_add),
+                            label: const Text('Create Profile'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Create a profile to save your preferences and job history',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                        
+                        // Show Firestore unavailable message
+                        if (!firestoreAvailable) ...[
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.info, color: Colors.blue.shade800),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Using local data only',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue.shade800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Your profile data is not being saved to the cloud. '
+                                  'This may be due to Firestore security rules or connectivity issues.',
+                                  style: TextStyle(color: Colors.blue.shade800),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        
+                        if (user != null || !firestoreAvailable) ...[
+                          const SizedBox(height: 32),
+                          _buildInfoSection(context, 'Account Information'),
+                          _buildInfoTile(
+                            context,
+                            'Phone Number',
+                            user?.phoneNumber ?? authUser?.phoneNumber ?? 'Not provided',
+                            Icons.phone,
+                          ),
+                          _buildInfoTile(
+                            context,
+                            'Location',
+                            user?.address ?? 'Not provided',
+                            Icons.location_on,
+                          ),
+                          _buildInfoTile(
+                            context,
+                            'Member Since',
+                            _getFormattedDate(user?.createdAt ?? authUser?.createdAt ?? DateTime.now()),
+                            Icons.calendar_today,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildInfoSection(context, 'Preferences'),
+                          SwitchListTile(
+                            title: const Text('Notifications'),
+                            subtitle: const Text('Receive push notifications'),
+                            value: true, // This would come from user preferences
+                            onChanged: firestoreAvailable ? (value) {
+                              // TODO: Implement notification toggle
+                            } : null,
+                          ),
+                          SwitchListTile(
+                            title: const Text('Dark Mode'),
+                            subtitle: const Text('Use dark theme'),
+                            value: false, // TODO: Implement theme toggle
+                            onChanged: (value) {
+                              // TODO: Implement theme toggle
+                            },
+                          ),
+                        ],
+                        
+                        const SizedBox(height: 24),
+                        _buildInfoSection(context, 'Support'),
+                        _buildInfoTile(
+                          context,
+                          'Help Center',
+                          '',
+                          Icons.help,
+                          showTrailing: true,
+                        ),
+                        _buildInfoTile(
+                          context,
+                          'Terms of Service',
+                          '',
+                          Icons.description,
+                          showTrailing: true,
+                        ),
+                        _buildInfoTile(
+                          context,
+                          'Privacy Policy',
+                          '',
+                          Icons.privacy_tip,
+                          showTrailing: true,
+                        ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    user.name,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    user.email,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      // Navigate to edit profile
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit Profile'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Profile sections
-            _buildSection(
-              context,
-              'Personal Information',
-              [
-                _buildInfoRow(
-                  context,
-                  Icons.phone,
-                  'Phone Number',
-                  user.phoneNumber,
-                ),
-                _buildInfoRow(
-                  context,
-                  Icons.location_on,
-                  'Address',
-                  user.address,
-                ),
-                _buildInfoRow(
-                  context,
-                  Icons.calendar_today,
-                  'Member Since',
-                  '${user.createdAt.day}/${user.createdAt.month}/${user.createdAt.year}',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            _buildSection(
-              context,
-              'Account',
-              [
-                _buildActionRow(
-                  context,
-                  Icons.history,
-                  'Job History',
-                  () {
-                    // Navigate to job history
-                  },
-                ),
-                _buildActionRow(
-                  context,
-                  Icons.payment,
-                  'Payment Methods',
-                  () {
-                    // Navigate to payment methods
-                  },
-                ),
-                _buildActionRow(
-                  context,
-                  Icons.notifications,
-                  'Notification Settings',
-                  () {
-                    // Navigate to notification settings
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            _buildSection(
-              context,
-              'Support',
-              [
-                _buildActionRow(
-                  context,
-                  Icons.help,
-                  'Help Center',
-                  () {
-                    // Navigate to help center
-                  },
-                ),
-                _buildActionRow(
-                  context,
-                  Icons.contact_support,
-                  'Contact Support',
-                  () {
-                    // Navigate to contact support
-                  },
-                ),
-                _buildActionRow(
-                  context,
-                  Icons.privacy_tip,
-                  'Privacy Policy',
-                  () {
-                    // Navigate to privacy policy
-                  },
-                ),
-                _buildActionRow(
-                  context,
-                  Icons.description,
-                  'Terms of Service',
-                  () {
-                    // Navigate to terms of service
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Logout button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  // Logout
-                },
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _buildSection(
-    BuildContext context,
-    String title,
-    List<Widget> children,
-  ) {
+  Widget _buildProfileImage(User? user, dynamic authUser) {
+    // First try to use the Firestore profile image
+    final profileUrl = user?.profileImageUrl;
+    
+    // If no Firestore profile, try to use the auth user photo URL
+    final authPhotoUrl = authUser?.photoURL;
+    
+    final imageUrl = profileUrl ?? authPhotoUrl;
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          imageUrl,
+          width: 120,
+          height: 120,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            print('Error loading profile image: $error');
+            return const Icon(
+              Icons.person,
+              size: 60,
+              color: Colors.grey,
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+        ),
+      );
+    } else {
+      return const Icon(
+        Icons.person,
+        size: 60,
+        color: Colors.grey,
+      );
+    }
+  }
+  
+  String _getName(User? user, dynamic authUser) {
+    return user?.name ?? authUser?.displayName ?? 'No Name';
+  }
+  
+  String _getEmail(User? user, dynamic authUser) {
+    return user?.email ?? authUser?.email ?? 'No Email';
+  }
+  
+  String _getFormattedDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildInfoSection(BuildContext context, String title) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            children: children,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
         ),
+        const Divider(),
       ],
     );
   }
 
-  Widget _buildInfoRow(
+  Widget _buildInfoTile(
     BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 12,
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 24,
-            color: Colors.grey[600],
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: Colors.grey[600],
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Colors.grey[600],
-            ),
-          ],
-        ),
-      ),
+    String title,
+    String subtitle,
+    IconData icon, {
+    bool showTrailing = false,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Theme.of(context).primaryColor),
+      title: Text(title),
+      subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
+      trailing: showTrailing ? const Icon(Icons.arrow_forward_ios, size: 16) : null,
+      onTap: showTrailing ? () {} : null,
     );
   }
 } 
