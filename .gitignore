@@ -125,3 +125,8 @@ app.*.symbols
 # Firebase
 .firebase/
 firebase-debug.log
+
+# Firebase configuration files
+**/google-services.json
+**/GoogleService-Info.plist
+lib/firebase_options.dart

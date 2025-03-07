@@ -21,7 +21,7 @@ class AuthException implements Exception {
 class AuthService {
   final firebase_auth.FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firestore;
-  final GoogleSignIn _googleSignIn;
+  final GoogleSignIn? _googleSignIn;
 
   /// Constructor that allows dependency injection for testing
   AuthService({
@@ -30,7 +30,8 @@ class AuthService {
     GoogleSignIn? googleSignIn,
   })  : _firebaseAuth = firebaseAuth ?? firebase_auth.FirebaseAuth.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        // Skip Google Sign-In initialization on web until properly configured
+        _googleSignIn = kIsWeb ? null : (googleSignIn ?? GoogleSignIn());
 
   /// Stream of auth state changes
   Stream<AuthUser?> get authStateChanges => _firebaseAuth.authStateChanges().map(
@@ -110,11 +111,145 @@ class AuthService {
     }
   }
 
+  /// Sign in with Google
+  Future<AuthUser> signInWithGoogle() async {
+    try {
+      firebase_auth.UserCredential userCredential;
+      
+      if (kIsWeb) {
+        // Web platform - use simple popup flow
+        final googleProvider = firebase_auth.GoogleAuthProvider();
+        userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
+      } else {
+        // Mobile platforms
+        final googleSignIn = GoogleSignIn();
+        
+        // Trigger the authentication flow
+        final googleUser = await googleSignIn.signIn();
+        
+        // User canceled the sign-in flow
+        if (googleUser == null) {
+          throw AuthException('Google Sign-In was canceled by user');
+        }
+        
+        // Get authentication details
+        final googleAuth = await googleUser.authentication;
+        
+        // Create credential
+        final credential = firebase_auth.GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        
+        // Sign in with Firebase
+        userCredential = await _firebaseAuth.signInWithCredential(credential);
+      }
+      
+      final user = userCredential.user;
+      if (user == null) {
+        throw AuthException('Google Sign-In failed: No user returned');
+      }
+
+      // Check if user profile exists
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        // Create profile for new user
+        await _createUserProfile(
+          uid: user.uid,
+          email: user.email!,
+          displayName: user.displayName,
+          userType: UserType.seeker, // Default for Google Sign-In
+          photoURL: user.photoURL,
+        );
+      }
+
+      return AuthUser.fromFirebaseUser(user);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Google Sign-In failed: ${e.toString()}');
+    }
+  }
+
+  /// Start phone number verification
+  Future<void> verifyPhoneNumber({
+    required String phoneNumber,
+    required Function(String, int?) codeSent,
+    required Function(AuthUser) verificationCompleted,
+    required Function(String) verificationFailed,
+    required Function(String) codeAutoRetrievalTimeout,
+  }) async {
+    try {
+      await _firebaseAuth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (firebase_auth.PhoneAuthCredential credential) async {
+          // Auto-verification completed (Android only)
+          final userCredential = await _firebaseAuth.signInWithCredential(credential);
+          final user = userCredential.user;
+          if (user != null) {
+            verificationCompleted(AuthUser.fromFirebaseUser(user));
+          }
+        },
+        verificationFailed: (firebase_auth.FirebaseAuthException e) {
+          verificationFailed(_handleFirebaseAuthException(e).message);
+        },
+        codeSent: codeSent,
+        codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+      );
+    } catch (e) {
+      throw AuthException('Phone verification failed: ${e.toString()}');
+    }
+  }
+
+  /// Sign in with phone verification code
+  Future<AuthUser> signInWithPhoneVerificationCode({
+    required String verificationId,
+    required String smsCode,
+    required UserType userType,
+    String? displayName,
+  }) async {
+    try {
+      // Create the credential
+      final credential = firebase_auth.PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+
+      // Sign in with the credential
+      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final user = userCredential.user;
+      if (user == null) {
+        throw AuthException('Phone sign-in failed');
+      }
+
+      // Check if the user already has a profile in Firestore
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) {
+        // Create a user profile if it doesn't exist
+        await _createUserProfile(
+          uid: user.uid,
+          email: user.email ?? '', // Handle nullable email
+          displayName: displayName ?? user.displayName,
+          userType: userType,
+          phoneNumber: user.phoneNumber,
+        );
+      }
+
+      return AuthUser.fromFirebaseUser(user);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Phone sign-in failed: ${e.toString()}');
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     try {
       await _firebaseAuth.signOut();
-      await _googleSignIn.signOut();
+      if (_googleSignIn != null) {
+        await _googleSignIn!.signOut();
+      }
     } catch (e) {
       throw AuthException('Sign out failed: ${e.toString()}');
     }
@@ -126,12 +261,16 @@ class AuthService {
     required String email,
     String? displayName,
     required UserType userType,
+    String? phoneNumber,
+    String? photoURL,
   }) async {
     try {
       final userProfile = UserProfile(
         uid: uid,
         displayName: displayName,
         email: email,
+        phoneNumber: phoneNumber,
+        photoURL: photoURL,
         userType: userType,
         isProfileComplete: false,
         createdAt: DateTime.now(),
@@ -165,6 +304,10 @@ class AuthService {
       case 'account-exists-with-different-credential':
         return AuthException(
             'An account already exists with the same email address', e.code);
+      case 'invalid-verification-code':
+        return AuthException('The verification code is invalid', e.code);
+      case 'invalid-verification-id':
+        return AuthException('The verification ID is invalid', e.code);
       default:
         return AuthException('Authentication error: ${e.message}', e.code);
     }

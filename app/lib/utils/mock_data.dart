@@ -4,6 +4,7 @@ import 'package:proquote/models/job.dart';
 import 'package:proquote/models/quote.dart';
 import 'package:proquote/models/user.dart';
 import 'package:proquote/models/user_profile.dart';
+import 'package:proquote/models/auth_user.dart';
 
 class MockData {
   // Service Categories
@@ -317,5 +318,18 @@ class MockData {
     userType: UserType.seeker,
     isEmailVerified: true,
     isProfileComplete: true,
+  );
+
+  // Mock AuthUser for testing
+  static final AuthUser mockAuthUser = AuthUser(
+    uid: 'user1',
+    email: 'john.doe@example.com',
+    displayName: 'John Doe',
+    photoURL: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=600',
+    emailVerified: true,
+    phoneNumber: '+27 82 123 4567',
+    createdAt: DateTime.now().subtract(const Duration(days: 30)),
+    lastSignInTime: DateTime.now(),
+    providerIds: ['password'],
   );
 } 
