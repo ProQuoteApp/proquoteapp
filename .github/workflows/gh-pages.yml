@@ -19,16 +19,16 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd proquoteapp/app
+        cd app
         flutter pub get
     
     - name: Build web
       run: |
-        cd proquoteapp/app
+        cd app
         flutter build web --release --base-href /proquoteapp/
     
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./proquoteapp/app/build/web
+        publish_dir: ./app/build/web
