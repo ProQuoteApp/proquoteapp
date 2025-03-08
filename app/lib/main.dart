@@ -15,8 +15,13 @@ import 'package:proquote/theme/shadcn_theme.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
+import 'package:proquote/providers/job_provider.dart';
+import 'package:proquote/providers/quote_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:proquote/widgets/user_avatar.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -24,6 +29,16 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Enable Firestore persistence for offline caching
+  FirebaseFirestore.instance.settings = Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+  
+  // Clear image cache on app start to prevent encoding issues
+  await CachedNetworkImage.evictFromCache('');
+  
   runApp(const MyApp());
 }
 
@@ -52,6 +67,20 @@ class MyApp extends StatelessWidget {
             return userProvider;
           },
         ),
+        ChangeNotifierProxyProvider<AuthProvider, JobProvider>(
+          create: (_) => JobProvider(),
+          update: (_, authProvider, previousJobProvider) {
+            final jobProvider = previousJobProvider ?? JobProvider();
+            
+            // Clear jobs when user logs out
+            if (authProvider.currentUser == null && previousJobProvider != null) {
+              jobProvider.clearCache();
+            }
+            
+            return jobProvider;
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => QuoteProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
@@ -118,8 +147,35 @@ GoRouter _buildRouter(AuthProvider authProvider) {
             path: 'job/:jobId',
             builder: (context, state) {
               final jobId = state.pathParameters['jobId']!;
-              final job = MockData.jobs.firstWhere((job) => job.id == jobId);
-              return MainScreen(child: JobDetailsScreen(job: job));
+              // Load the job from the provider instead of mock data
+              return MainScreen(
+                child: Consumer<JobProvider>(
+                  builder: (context, jobProvider, _) {
+                    // Load the job if not already loaded
+                    if (jobProvider.currentJob?.id != jobId) {
+                      Future.microtask(() => jobProvider.loadJob(jobId));
+                    }
+                    
+                    // Also load quotes for this job
+                    if (jobProvider.currentJob != null) {
+                      final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
+                      Future.microtask(() => quoteProvider.loadJobQuotes(jobId));
+                    }
+                    
+                    // Show loading indicator while job is loading
+                    if (jobProvider.isLoading || jobProvider.currentJob == null) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    // Show error if job not found
+                    if (jobProvider.error != null) {
+                      return Center(child: Text('Error: ${jobProvider.error}'));
+                    }
+                    
+                    return JobDetailsScreen(job: jobProvider.currentJob!);
+                  },
+                ),
+              );
             },
           ),
           GoRoute(

@@ -47,7 +47,54 @@ class UserProvider extends ChangeNotifier {
       
       if (user != null) {
         print('UserProvider: User data loaded successfully: ${user.name}');
-        _currentUser = user;
+        
+        // Validate profile image URL if present
+        if (user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty) {
+          try {
+            final uri = Uri.parse(user.profileImageUrl!);
+            final isValidUrl = uri.isAbsolute && 
+                              (uri.scheme == 'http' || uri.scheme == 'https') &&
+                              uri.host.isNotEmpty;
+            
+            if (!isValidUrl) {
+              print('UserProvider: Invalid profile image URL: ${user.profileImageUrl}');
+              // Create a new user object without the invalid profile image URL
+              _currentUser = User(
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phoneNumber: user.phoneNumber,
+                profileImageUrl: null, // Clear invalid URL
+                address: user.address,
+                jobIds: user.jobIds,
+                createdAt: user.createdAt,
+                userType: user.userType,
+                isEmailVerified: user.isEmailVerified,
+                isProfileComplete: user.isProfileComplete,
+              );
+            } else {
+              _currentUser = user;
+            }
+          } catch (e) {
+            print('UserProvider: Error parsing profile image URL: $e');
+            // Create a new user object without the invalid profile image URL
+            _currentUser = User(
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              phoneNumber: user.phoneNumber,
+              profileImageUrl: null, // Clear invalid URL
+              address: user.address,
+              jobIds: user.jobIds,
+              createdAt: user.createdAt,
+              userType: user.userType,
+              isEmailVerified: user.isEmailVerified,
+              isProfileComplete: user.isProfileComplete,
+            );
+          }
+        } else {
+          _currentUser = user;
+        }
         
         // Even if we don't have a Firestore profile, we can still use the auth data
         if (user.isProfileComplete == false) {

@@ -8,18 +8,70 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/providers/auth_provider.dart';
+import 'package:proquote/providers/job_provider.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load jobs when the screen is first displayed
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadJobs();
+    });
+  }
+
+  void _loadJobs() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final jobProvider = Provider.of<JobProvider>(context, listen: false);
+    
+    if (authProvider.currentUser != null) {
+      print('HomeScreen: Loading jobs for user ${authProvider.currentUser!.uid}');
+      
+      // Check if we already have jobs loaded
+      if (jobProvider.userJobs == null || jobProvider.userJobs!.isEmpty) {
+        // If no jobs are loaded, try refreshing from server
+        jobProvider.refreshUserJobs(authProvider.currentUser!.uid);
+      } else {
+        // Otherwise, use the normal load method which will use cache if available
+        jobProvider.loadUserJobs(authProvider.currentUser!.uid);
+      }
+      
+      // Also load open jobs for the home screen
+      jobProvider.loadOpenJobs();
+    } else {
+      print('HomeScreen: No user logged in');
+    }
+  }
+
+  Future<void> _refreshJobs() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final jobProvider = Provider.of<JobProvider>(context, listen: false);
+    
+    if (authProvider.currentUser != null) {
+      // Force refresh user's jobs
+      await jobProvider.refreshUserJobs(authProvider.currentUser!.uid);
+      
+      // Also refresh open jobs
+      await jobProvider.refreshOpenJobs();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     // Get user data from providers
     final userProvider = Provider.of<UserProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
+    final jobProvider = Provider.of<JobProvider>(context);
     final user = userProvider.currentUser;
     final authUser = authProvider.currentUser;
     
@@ -64,300 +116,337 @@ class HomeScreen extends StatelessWidget {
       body: Center(
         child: SizedBox(
           width: contentWidth,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppConstants.screenPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome section
-                Text(
-                  'Welcome, ${_getFirstName(user, authUser)}!',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: AppConstants.textSpacing),
-                Text(
-                  'What service do you need today?',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                ),
-                const SizedBox(height: AppConstants.sectionSpacing),
-
-                // Search bar
-                ShadInput(
-                  placeholder: const Text('Search for services...'),
-                  leading: const Icon(Icons.search),
-                  onChanged: (value) {
-                    // Handle search
-                  },
-                ),
-                const SizedBox(height: AppConstants.sectionSpacing),
-
-                // Service categories
-                Text(
-                  'Service Categories',
-                  style: ShadTheme.of(context).textTheme.h3,
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 160,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: MockData.serviceCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = MockData.serviceCategories[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          right: index < MockData.serviceCategories.length - 1 ? 16 : 0,
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await _refreshJobs();
+            },
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(AppConstants.screenPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Welcome section
+                  Text(
+                    'Welcome, ${_getFirstName(user, authUser)}!',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: AppConstants.textSpacing),
+                  Text(
+                    'What service do you need today?',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.grey[600],
                         ),
-                        child: ServiceCategoryCard(
-                          id: category['id'] as String,
-                          name: category['name'] as String,
-                          icon: category['icon'] as String,
-                          color: Color(category['color'] as int),
-                          onTap: () {
-                            // Navigate to category services
-                            final categoryName = category['name'] as String;
-                            context.go('/providers?category=$categoryName');
-                          },
-                        ),
-                      );
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+
+                  // Search bar
+                  ShadInput(
+                    placeholder: const Text('Search for services...'),
+                    leading: const Icon(Icons.search),
+                    onChanged: (value) {
+                      // Handle search
                     },
                   ),
-                ),
-                const SizedBox(height: 32),
+                  const SizedBox(height: AppConstants.sectionSpacing),
 
-                // Your jobs - RESPONSIVE LAYOUT
-                ShadCard(
-                  title: Row(
-                    children: [
-                      Icon(
-                        Icons.work_outline,
-                        color: Theme.of(context).primaryColor,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Your Jobs',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Theme.of(context).primaryColor,
-                            ),
-                      ),
-                      const Spacer(),
-                      ShadButton.ghost(
-                        onPressed: () {
-                          // Navigate to all jobs
-                          context.go('/jobs');
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                  // Service categories
+                  Text(
+                    'Service Categories',
+                    style: ShadTheme.of(context).textTheme.h3,
+                  ),
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  SizedBox(
+                    height: 120,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: MockData.serviceCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = MockData.serviceCategories[index];
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            right: index < MockData.serviceCategories.length - 1 ? 16 : 0,
+                          ),
+                          child: ServiceCategoryCard(
+                            id: category['id'] as String,
+                            name: category['name'] as String,
+                            icon: category['icon'] as String,
+                            color: Color(category['color'] as int),
+                            onTap: () {
+                              // Navigate to providers filtered by category
+                              context.go('/providers?category=${category['name']}');
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.sectionSpacing),
+
+                  // Recent jobs section
+                  ShadCard(
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            const Text('View All'),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.arrow_forward, size: 16),
+                            Text(
+                              'Your Recent Jobs',
+                              style: ShadTheme.of(context).textTheme.h4,
+                            ),
+                            if (jobProvider.isUserJobsFromCache && !jobProvider.isLoading)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Tooltip(
+                                  message: 'Data from cache. Pull down to refresh',
+                                  child: Icon(
+                                    Icons.cached,
+                                    size: 16,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (MockData.jobs.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.assignment_outlined,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No jobs yet',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Create a new job to get started',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                ),
-                              ],
-                            ),
+                        TextButton(
+                          onPressed: () {
+                            // Navigate to all jobs
+                            context.go('/jobs');
+                          },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('View All'),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward, size: 16),
+                            ],
                           ),
-                        )
-                      else
-                        // Responsive job list
-                        isLargeScreen || isMediumScreen
-                            ? GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: isLargeScreen ? 2 : 1,
-                                  childAspectRatio: isLargeScreen ? 2.5 : 1.8,
-                                  crossAxisSpacing: 16,
-                                  mainAxisSpacing: 16,
-                                ),
-                                itemCount: MockData.jobs.length > (isLargeScreen ? 4 : 2) 
-                                    ? (isLargeScreen ? 4 : 2) 
-                                    : MockData.jobs.length,
-                                itemBuilder: (context, index) {
-                                  final job = MockData.jobs[index];
-                                  return JobCard(
-                                    job: job,
-                                    onTap: () {
-                                      // Navigate to job details
-                                      context.go('/job/${job.id}');
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (jobProvider.isLoading)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 24),
+                              child: CircularProgressIndicator(),
+                            ),
+                          )
+                        else if (jobProvider.error != null)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: Colors.red[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Error loading jobs',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          color: Colors.red[600],
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    jobProvider.error!,
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Colors.red[600],
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ShadButton(
+                                    onPressed: _loadJobs,
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (jobProvider.userJobs == null || jobProvider.userJobs!.isEmpty)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 24),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.assignment_outlined,
+                                    size: 48,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No jobs yet',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Create a new job to get started',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: Colors.grey[600],
+                                        ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ShadButton(
+                                    onPressed: () {
+                                      context.go('/create-job');
                                     },
-                                  );
-                                },
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: MockData.jobs.length > 2 ? 2 : MockData.jobs.length,
-                                itemBuilder: (context, index) {
-                                  final job = MockData.jobs[index];
-                                  return Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom: index < (MockData.jobs.length > 2 ? 1 : MockData.jobs.length - 1) ? 12 : 0,
-                                    ),
-                                    child: JobCard(
+                                    child: const Text('Create Job'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          // Responsive job list
+                          isLargeScreen || isMediumScreen
+                              ? GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: isLargeScreen ? 2 : 1,
+                                    childAspectRatio: isLargeScreen ? 2.5 : 1.8,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                  ),
+                                  itemCount: jobProvider.userJobs!.length > (isLargeScreen ? 4 : 2) 
+                                      ? (isLargeScreen ? 4 : 2) 
+                                      : jobProvider.userJobs!.length,
+                                  itemBuilder: (context, index) {
+                                    final job = jobProvider.userJobs![index];
+                                    return JobCard(
                                       job: job,
                                       onTap: () {
                                         // Navigate to job details
                                         context.go('/job/${job.id}');
                                       },
-                                    ),
-                                  );
+                                    );
+                                  },
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: jobProvider.userJobs!.length > 2 ? 2 : jobProvider.userJobs!.length,
+                                  itemBuilder: (context, index) {
+                                    final job = jobProvider.userJobs![index];
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: index < (jobProvider.userJobs!.length > 2 ? 1 : jobProvider.userJobs!.length - 1) ? 12 : 0,
+                                      ),
+                                      child: JobCard(
+                                        job: job,
+                                        onTap: () {
+                                          // Navigate to job details
+                                          context.go('/job/${job.id}');
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                        if (jobProvider.userJobs != null && jobProvider.userJobs!.length > (isLargeScreen ? 4 : 2))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Center(
+                              child: ShadButton.outline(
+                                onPressed: () {
+                                  // Navigate to all jobs
+                                  context.go('/jobs');
                                 },
-                              ),
-                      if (MockData.jobs.length > (isLargeScreen ? 4 : 2))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Center(
-                            child: ShadButton.outline(
-                              onPressed: () {
-                                // Navigate to all jobs
-                                context.go('/jobs');
-                              },
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.list, size: 18),
-                                  const SizedBox(width: 8),
-                                  const Text('View All Jobs'),
-                                ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text('View All Jobs'),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.arrow_forward, size: 16),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 32),
+                  const SizedBox(height: AppConstants.sectionSpacing),
 
-                // Popular services - RESPONSIVE LAYOUT
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Popular Services',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.grey[700],
-                            ),
-                      ),
-                      ShadButton.link(
-                        onPressed: () {
-                          // Navigate to all services
-                          context.go('/providers');
-                        },
-                        child: const Text('See All'),
-                      ),
-                    ],
+                  // Popular services section
+                  Text(
+                    'Popular Services',
+                    style: ShadTheme.of(context).textTheme.h3,
                   ),
-                ),
-                // Responsive service list
-                isLargeScreen || isMediumScreen
-                    ? GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: isLargeScreen ? 4 : 3,
-                          childAspectRatio: 0.75,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: MockData.services.length > (isLargeScreen ? 8 : 6) 
-                            ? (isLargeScreen ? 8 : 6) 
-                            : MockData.services.length,
-                        itemBuilder: (context, index) {
-                          final service = MockData.services[index];
-                          return ServiceCard(
-                            service: service,
-                            onTap: () {
-                              // Navigate to service providers for this service
-                              context.go('/providers?category=${service.category}');
-                            },
-                          );
-                        },
-                      )
-                    : SizedBox(
-                        height: 180, // Increased from 160
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: MockData.services.length > 4 ? 4 : MockData.services.length,
+                  const SizedBox(height: AppConstants.itemSpacing),
+                  
+                  // Responsive service list
+                  isLargeScreen || isMediumScreen
+                      ? GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: isLargeScreen ? 4 : 3,
+                            childAspectRatio: 0.75,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: MockData.services.length > (isLargeScreen ? 8 : 6) 
+                              ? (isLargeScreen ? 8 : 6) 
+                              : MockData.services.length,
                           itemBuilder: (context, index) {
                             final service = MockData.services[index];
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                right: index < (MockData.services.length > 4 ? 3 : MockData.services.length - 1) ? 12 : 0,
-                              ),
-                              child: ServiceCard(
-                                service: service,
-                                onTap: () {
-                                  // Navigate to service providers for this service
-                                  context.go('/providers?category=${service.category}');
-                                },
-                              ),
+                            return ServiceCard(
+                              service: service,
+                              onTap: () {
+                                // Navigate to service providers for this service
+                                context.go('/providers?category=${service.category}');
+                              },
                             );
                           },
+                        )
+                      : SizedBox(
+                          height: 180, // Increased from 160
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: MockData.services.length > 4 ? 4 : MockData.services.length,
+                            itemBuilder: (context, index) {
+                              final service = MockData.services[index];
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  right: index < (MockData.services.length > 4 ? 3 : MockData.services.length - 1) ? 12 : 0,
+                                ),
+                                child: ServiceCard(
+                                  service: service,
+                                  onTap: () {
+                                    // Navigate to service providers for this service
+                                    context.go('/providers?category=${service.category}');
+                                  },
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-      floatingActionButton: ShadButton(
+      floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to create job
           context.go('/create-job');
         },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.add, size: 18),
-            const SizedBox(width: 8),
-            const Text('New Job'),
-          ],
-        ),
+        child: const Icon(Icons.add),
       ),
     );
   }
   
   /// Get the first name of the user
   String _getFirstName(user, authUser) {
-    final fullName = user?.name ?? authUser?.displayName ?? 'User';
-    return fullName.split(' ')[0];
+    final name = user?.name ?? authUser?.displayName ?? 'Guest';
+    return name.split(' ').first;
   }
 }
 

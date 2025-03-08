@@ -39,6 +39,23 @@ class ProfileScreen extends StatelessWidget {
         title: const Text('Profile'),
         centerTitle: isLargeScreen,
         actions: [
+          // Add a button to clear image cache
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Clear image cache',
+            onPressed: () {
+              // Clear the image cache
+              UserAvatar.clearAllImageCache();
+              
+              // Show a snackbar to confirm
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Image cache cleared. Restart the app to see changes.'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            },
+          ),
           if (user != null && firestoreAvailable)
             IconButton(
               icon: const Icon(Icons.edit),
