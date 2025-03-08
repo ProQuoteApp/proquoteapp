@@ -16,6 +16,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for proper versioning
     
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -75,13 +77,40 @@ jobs:
           exit 1
         fi
     
+    - name: Add build timestamp for cache busting
+      run: |
+        cd app
+        # Create a timestamp file that will be included in the build
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        echo "Build timestamp: $TIMESTAMP" > web/build_timestamp.txt
+        echo "Created timestamp file with value: $TIMESTAMP"
+    
     - name: Build web
       run: |
         cd app
+        # Clean before building to ensure no cached artifacts
+        flutter clean
         flutter build web --release --base-href /proquoteapp/
+    
+    - name: List build output
+      run: |
+        echo "Listing build output files:"
+        ls -la app/build/web/
+        echo "Checking index.html content:"
+        cat app/build/web/index.html | head -20
     
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./app/build/web
+        force_orphan: true  # Create a new orphan branch for each deployment
+        commit_message: "Deploy: ${{ github.event.head_commit.message }} [skip ci]"
+    
+    - name: Deployment Info
+      run: |
+        echo "Deployment completed."
+        echo "If you're still seeing the old version, try:"
+        echo "1. Hard refreshing your browser (Ctrl+F5 or Cmd+Shift+R)"
+        echo "2. Clearing your browser cache"
+        echo "3. Checking the deployment at: https://proquoteapp.github.io/proquoteapp/"
