@@ -38,14 +38,18 @@ class AuthProvider extends ChangeNotifier {
       // Initialize auth service if not provided
       _authService ??= AuthService();
       
+      // Check if there's a current user from persistent storage
+      _currentUser = await _authService!.getPersistentUser();
+      
       // Listen for auth state changes
       _authSubscription = _authService!.authStateChanges.listen((user) {
         _currentUser = user;
+        // Save user to persistent storage when auth state changes
+        if (user != null) {
+          _authService!.savePersistentUser(user);
+        }
         notifyListeners();
       });
-      
-      // Check if there's a current user
-      _currentUser = _authService!.currentUser;
       
       _initialized = true;
     } catch (e) {
@@ -290,9 +294,11 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       await _authService!.signOut();
+      // Clear persistent user data
+      await _authService!.clearPersistentUser();
       _currentUser = null;
     } catch (e) {
-      _error = 'Failed to sign out: ${e.toString()}';
+      _error = 'Failed to sign out: $e';
     } finally {
       _isLoading = false;
       notifyListeners();

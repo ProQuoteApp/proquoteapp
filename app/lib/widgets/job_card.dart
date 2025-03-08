@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:proquote/models/job.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class JobCard extends StatelessWidget {
   final Job job;
@@ -18,17 +19,20 @@ class JobCard extends StatelessWidget {
     // Get screen width to handle responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
+    
+    // Get theme
+    final theme = ShadTheme.of(context);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.colorScheme.card,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: theme.colorScheme.foreground.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -52,15 +56,17 @@ class JobCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(
                       width: 100,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: CircularProgressIndicator(),
+                      color: theme.colorScheme.muted,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                     errorWidget: (context, url, error) => Container(
                       width: 100,
-                      color: Colors.grey[300],
-                      child: const Icon(Icons.error),
+                      color: theme.colorScheme.muted,
+                      child: Icon(Icons.error, color: theme.colorScheme.mutedForeground),
                     ),
                   ),
                 ),
@@ -82,7 +88,7 @@ class JobCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(job.status).withOpacity(0.1),
+                              color: _getStatusColor(job.status, theme.colorScheme).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -90,7 +96,7 @@ class JobCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
-                                color: _getStatusColor(job.status),
+                                color: _getStatusColor(job.status, theme.colorScheme),
                               ),
                             ),
                           ),
@@ -101,7 +107,7 @@ class JobCard extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withOpacity(0.1),
+                              color: theme.colorScheme.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -109,7 +115,7 @@ class JobCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
-                                color: Theme.of(context).primaryColor,
+                                color: theme.colorScheme.primary,
                               ),
                             ),
                           ),
@@ -120,9 +126,10 @@ class JobCard extends StatelessWidget {
                       // Title
                       Text(
                         job.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.foreground,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -135,7 +142,7 @@ class JobCard extends StatelessWidget {
                           job.description,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: theme.colorScheme.mutedForeground,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -151,7 +158,7 @@ class JobCard extends StatelessWidget {
                                 Icon(
                                   Icons.location_on,
                                   size: 12,
-                                  color: Colors.grey[600],
+                                  color: theme.colorScheme.mutedForeground,
                                 ),
                                 const SizedBox(width: 2),
                                 Expanded(
@@ -159,7 +166,7 @@ class JobCard extends StatelessWidget {
                                     job.location,
                                     style: TextStyle(
                                       fontSize: 10,
-                                      color: Colors.grey[600],
+                                      color: theme.colorScheme.mutedForeground,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -174,7 +181,7 @@ class JobCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).primaryColor,
+                              color: theme.colorScheme.primary,
                             ),
                           ),
                         ],
@@ -186,7 +193,7 @@ class JobCard extends StatelessWidget {
                         'Due: ${DateFormat('MMM dd').format(job.preferredDate)}',
                         style: TextStyle(
                           fontSize: 10,
-                          color: Colors.grey[600],
+                          color: theme.colorScheme.mutedForeground,
                         ),
                       ),
                     ],
@@ -200,18 +207,20 @@ class JobCard extends StatelessWidget {
     );
   }
 
-  Color _getStatusColor(String status) {
+  Color _getStatusColor(String status, ShadColorScheme colorScheme) {
     switch (status) {
       case 'open':
-        return Colors.blue;
+        return colorScheme.primary;
       case 'in_progress':
         return Colors.orange;
       case 'completed':
         return Colors.green;
       case 'cancelled':
-        return Colors.red;
+        return colorScheme.destructive;
+      case 'archived':
+        return colorScheme.mutedForeground;
       default:
-        return Colors.grey;
+        return colorScheme.mutedForeground;
     }
   }
 
@@ -225,6 +234,8 @@ class JobCard extends StatelessWidget {
         return 'Completed';
       case 'cancelled':
         return 'Cancelled';
+      case 'archived':
+        return 'Archived';
       default:
         return 'Unknown';
     }
