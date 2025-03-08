@@ -35,12 +35,12 @@ class ServiceCategoryCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.muted,
+                  color: color.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.handyman, // Fallback icon
-                  color: theme.colorScheme.primary,
+                  _getCategoryIcon(name),
+                  color: color,
                   size: 24,
                 ),
               ),
@@ -63,5 +63,26 @@ class ServiceCategoryCard extends StatelessWidget {
         ),
       ),
     );
+  }
+  
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'plumbing':
+        return Icons.plumbing;
+      case 'electrical':
+        return Icons.electrical_services;
+      case 'painting':
+        return Icons.format_paint;
+      case 'cleaning':
+        return Icons.cleaning_services;
+      case 'gardening':
+        return Icons.yard;
+      case 'carpentry':
+        return Icons.handyman;
+      case 'roofing':
+        return Icons.roofing;
+      default:
+        return Icons.home_repair_service;
+    }
   }
 } 

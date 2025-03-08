@@ -29,6 +29,16 @@ class UserAvatar extends StatelessWidget {
     this.showEditButton = false,
     this.onEditTap,
   });
+  
+  /// Static method to clear the entire image cache
+  static void clearAllImageCache() {
+    try {
+      CachedNetworkImage.evictFromCache('');
+      debugPrint('Cleared all image caches');
+    } catch (e) {
+      debugPrint('Error clearing all image caches: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,17 +90,18 @@ class UserAvatar extends StatelessWidget {
       return _buildInitialsAvatar(initials, context);
     }
     
-    // Validate URL
+    // Simple URL validation
     bool isValidUrl = false;
     try {
       final uri = Uri.parse(imageUrl);
-      isValidUrl = uri.isAbsolute && (uri.scheme == 'http' || uri.scheme == 'https');
+      isValidUrl = uri.isAbsolute && uri.host.isNotEmpty;
     } catch (e) {
       debugPrint('Invalid image URL: $e');
       return _buildInitialsAvatar(initials, context);
     }
     
     if (!isValidUrl) {
+      debugPrint('URL failed validation: $imageUrl');
       return _buildInitialsAvatar(initials, context);
     }
     
@@ -101,6 +112,8 @@ class UserAvatar extends StatelessWidget {
         width: radius * 2,
         height: radius * 2,
         fit: BoxFit.cover,
+        fadeInDuration: const Duration(milliseconds: 300),
+        fadeOutDuration: const Duration(milliseconds: 300),
         placeholder: (context, url) => _buildInitialsAvatar(initials, context),
         errorWidget: (context, url, error) {
           debugPrint('Error loading profile image: $error');
@@ -108,12 +121,6 @@ class UserAvatar extends StatelessWidget {
           _clearImageCache(url);
           return _buildInitialsAvatar(initials, context);
         },
-        // Add caching settings
-        cacheKey: imageUrl,
-        maxHeightDiskCache: 200,
-        maxWidthDiskCache: 200,
-        memCacheHeight: 200,
-        memCacheWidth: 200,
       ),
     );
   }

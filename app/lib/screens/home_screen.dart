@@ -35,11 +35,34 @@ class _HomeScreenState extends State<HomeScreen> {
     final jobProvider = Provider.of<JobProvider>(context, listen: false);
     
     if (authProvider.currentUser != null) {
-      // Load user's jobs
-      jobProvider.loadUserJobs(authProvider.currentUser!.uid);
+      print('HomeScreen: Loading jobs for user ${authProvider.currentUser!.uid}');
+      
+      // Check if we already have jobs loaded
+      if (jobProvider.userJobs == null || jobProvider.userJobs!.isEmpty) {
+        // If no jobs are loaded, try refreshing from server
+        jobProvider.refreshUserJobs(authProvider.currentUser!.uid);
+      } else {
+        // Otherwise, use the normal load method which will use cache if available
+        jobProvider.loadUserJobs(authProvider.currentUser!.uid);
+      }
       
       // Also load open jobs for the home screen
       jobProvider.loadOpenJobs();
+    } else {
+      print('HomeScreen: No user logged in');
+    }
+  }
+
+  Future<void> _refreshJobs() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final jobProvider = Provider.of<JobProvider>(context, listen: false);
+    
+    if (authProvider.currentUser != null) {
+      // Force refresh user's jobs
+      await jobProvider.refreshUserJobs(authProvider.currentUser!.uid);
+      
+      // Also refresh open jobs
+      await jobProvider.refreshOpenJobs();
     }
   }
 
@@ -95,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: contentWidth,
           child: RefreshIndicator(
             onRefresh: () async {
-              _loadJobs();
+              await _refreshJobs();
             },
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(AppConstants.screenPadding),
@@ -164,9 +187,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Your Recent Jobs',
-                          style: ShadTheme.of(context).textTheme.h4,
+                        Row(
+                          children: [
+                            Text(
+                              'Your Recent Jobs',
+                              style: ShadTheme.of(context).textTheme.h4,
+                            ),
+                            if (jobProvider.isUserJobsFromCache && !jobProvider.isLoading)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Tooltip(
+                                  message: 'Data from cache. Pull down to refresh',
+                                  child: Icon(
+                                    Icons.cached,
+                                    size: 16,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         TextButton(
                           onPressed: () {

@@ -12,38 +12,44 @@ class MockData {
     {
       'id': 'cat1',
       'name': 'Plumbing',
-      'icon': 'assets/icons/plumbing.png',
+      'icon': '',
       'color': 0xFF1E88E5,
     },
     {
       'id': 'cat2',
       'name': 'Electrical',
-      'icon': 'assets/icons/electrical.png',
+      'icon': '',
       'color': 0xFFFF8F00,
     },
     {
       'id': 'cat3',
       'name': 'Painting',
-      'icon': 'assets/icons/painting.png',
+      'icon': '',
       'color': 0xFF43A047,
     },
     {
       'id': 'cat4',
       'name': 'Cleaning',
-      'icon': 'assets/icons/cleaning.png',
+      'icon': '',
       'color': 0xFF5E35B1,
     },
     {
       'id': 'cat5',
       'name': 'Gardening',
-      'icon': 'assets/icons/gardening.png',
+      'icon': '',
       'color': 0xFF00ACC1,
     },
     {
       'id': 'cat6',
       'name': 'Carpentry',
-      'icon': 'assets/icons/carpentry.png',
+      'icon': '',
       'color': 0xFFD81B60,
+    },
+    {
+      'id': 'cat7',
+      'name': 'Roofing',
+      'icon': '',
+      'color': 0xFF795548,
     },
   ];
 
@@ -102,6 +108,15 @@ class MockData {
       imageUrl: 'https://images.pexels.com/photos/6195085/pexels-photo-6195085.jpeg?auto=compress&cs=tinysrgb&w=600',
       averageRating: 4.9,
       totalRatings: 103,
+    ),
+    Service(
+      id: 'serv7',
+      name: 'Roof Repair',
+      description: 'Fix leaks, replace tiles, and repair roof damage',
+      category: 'Roofing',
+      imageUrl: 'https://images.pexels.com/photos/5417837/pexels-photo-5417837.jpeg?auto=compress&cs=tinysrgb&w=600',
+      averageRating: 4.6,
+      totalRatings: 89,
     ),
   ];
 
@@ -184,6 +199,19 @@ class MockData {
       location: 'Port Elizabeth, South Africa',
       contactNumber: '+27 87 678 9012',
       email: 'info@woodworks.co.za',
+    ),
+    ServiceProvider(
+      id: 'prov7',
+      name: 'Top Roof Solutions',
+      description: 'Expert roofing services for residential and commercial properties',
+      profileImageUrl: 'https://images.pexels.com/photos/6474343/pexels-photo-6474343.jpeg?auto=compress&cs=tinysrgb&w=600',
+      serviceCategories: ['Roofing'],
+      rating: 4.7,
+      completedJobs: 156,
+      isVerified: true,
+      location: 'Pretoria, South Africa',
+      contactNumber: '+27 87 654 3210',
+      email: 'info@toproofsolutions.co.za',
     ),
   ];
 

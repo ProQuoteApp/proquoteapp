@@ -12,6 +12,11 @@ class JobProvider extends ChangeNotifier {
   Job? _currentJob;
   bool _isLoading = false;
   String? _error;
+  
+  // Track if data is from cache
+  bool _isUserJobsFromCache = false;
+  bool _isOpenJobsFromCache = false;
+  bool _isCurrentJobFromCache = false;
 
   /// Constructor
   JobProvider({
@@ -32,6 +37,15 @@ class JobProvider extends ChangeNotifier {
 
   /// Error message if any
   String? get error => _error;
+  
+  /// Whether user jobs are from cache
+  bool get isUserJobsFromCache => _isUserJobsFromCache;
+  
+  /// Whether open jobs are from cache
+  bool get isOpenJobsFromCache => _isOpenJobsFromCache;
+  
+  /// Whether current job is from cache
+  bool get isCurrentJobFromCache => _isCurrentJobFromCache;
 
   /// Load jobs for a user
   Future<void> loadUserJobs(String userId) async {
@@ -40,10 +54,43 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // First attempt to load from cache
       _userJobs = await _jobService.getUserJobs(userId);
+      
+      // If no jobs were found, clear the cache and try again from server
+      if (_userJobs == null || _userJobs!.isEmpty) {
+        print('No jobs found in cache, forcing server fetch');
+        _jobService.clearUserJobsCache(userId);
+        _userJobs = await _jobService.getUserJobs(userId);
+        _isUserJobsFromCache = false;
+      } else {
+        _isUserJobsFromCache = true;
+      }
     } catch (e) {
       _error = 'Failed to load jobs: $e';
       print('JobProvider: Error loading user jobs: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Force refresh jobs for a user (bypass cache)
+  Future<void> refreshUserJobs(String userId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Clear the cache for this user's jobs
+      _jobService.clearUserJobsCache(userId);
+      
+      // Load fresh data
+      _userJobs = await _jobService.getUserJobs(userId);
+      _isUserJobsFromCache = false; // Fresh data
+    } catch (e) {
+      _error = 'Failed to refresh jobs: $e';
+      print('JobProvider: Error refreshing user jobs: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -58,9 +105,33 @@ class JobProvider extends ChangeNotifier {
 
     try {
       _openJobs = await _jobService.getOpenJobs(category: category);
+      _isOpenJobsFromCache = true; // Assume from cache initially
     } catch (e) {
       _error = 'Failed to load open jobs: $e';
       print('JobProvider: Error loading open jobs: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Force refresh open jobs (bypass cache)
+  Future<void> refreshOpenJobs({String? category}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Clear the cache
+      final cacheKey = category ?? 'all';
+      _jobService.clearCache(); // Clear all cache for simplicity
+      
+      // Load fresh data
+      _openJobs = await _jobService.getOpenJobs(category: category);
+      _isOpenJobsFromCache = false; // Fresh data
+    } catch (e) {
+      _error = 'Failed to refresh open jobs: $e';
+      print('JobProvider: Error refreshing open jobs: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -75,6 +146,7 @@ class JobProvider extends ChangeNotifier {
 
     try {
       _currentJob = await _jobService.getJob(jobId);
+      _isCurrentJobFromCache = true; // Assume from cache initially
       
       if (_currentJob == null) {
         _error = 'Job not found';
@@ -82,6 +154,32 @@ class JobProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to load job: $e';
       print('JobProvider: Error loading job: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Force refresh a specific job (bypass cache)
+  Future<void> refreshJob(String jobId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // Clear the cache for this job
+      _jobService.clearJobCache(jobId);
+      
+      // Load fresh data
+      _currentJob = await _jobService.getJob(jobId);
+      _isCurrentJobFromCache = false; // Fresh data
+      
+      if (_currentJob == null) {
+        _error = 'Job not found';
+      }
+    } catch (e) {
+      _error = 'Failed to refresh job: $e';
+      print('JobProvider: Error refreshing job: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -272,5 +370,10 @@ class JobProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+  
+  /// Clear all caches
+  void clearCache() {
+    _jobService.clearCache();
   }
 } 
