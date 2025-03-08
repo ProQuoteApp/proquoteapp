@@ -3,6 +3,7 @@ import 'package:proquote/models/user.dart';
 import 'package:provider/provider.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
+import 'package:proquote/providers/theme_provider.dart';
 import 'package:proquote/models/user_profile.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
@@ -227,12 +228,18 @@ class ProfileScreen extends StatelessWidget {
                                 // TODO: Implement notification toggle
                               } : null,
                             ),
-                            SwitchListTile(
-                              title: const Text('Dark Mode'),
-                              subtitle: const Text('Use dark theme'),
-                              value: false, // TODO: Implement theme toggle
-                              onChanged: (value) {
-                                // TODO: Implement theme toggle
+                            Consumer<ThemeProvider>(
+                              builder: (context, themeProvider, _) {
+                                return SwitchListTile(
+                                  title: const Text('Dark Mode'),
+                                  subtitle: const Text('Use dark theme'),
+                                  value: themeProvider.isDarkMode,
+                                  onChanged: (value) {
+                                    themeProvider.setThemeMode(
+                                      value ? ThemeMode.dark : ThemeMode.light
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ],

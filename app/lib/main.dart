@@ -17,6 +17,7 @@ import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/providers/job_provider.dart';
 import 'package:proquote/providers/quote_provider.dart';
+import 'package:proquote/providers/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProxyProvider<AuthProvider, UserProvider>(
           create: (_) => UserProvider(),
           update: (_, authProvider, previousUserProvider) {
@@ -82,8 +84,8 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => QuoteProvider()),
       ],
-      child: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
+      child: Consumer2<AuthProvider, ThemeProvider>(
+        builder: (context, authProvider, themeProvider, _) {
           return ShadApp.custom(
             theme: ShadThemeData(
               brightness: Brightness.light,
@@ -93,7 +95,7 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.dark,
               colorScheme: const ShadBlueColorScheme.dark(),
             ),
-            themeMode: ThemeMode.light, // Default to light theme
+            themeMode: themeProvider.themeMode,
             appBuilder: (context, theme) => MaterialApp.router(
               title: 'ProQuote',
               theme: theme,
