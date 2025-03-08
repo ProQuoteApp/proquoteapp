@@ -22,6 +22,53 @@ jobs:
         cd app
         flutter pub get
     
+    - name: Create mock Firebase configuration
+      run: |
+        cd app
+        if [ -f "lib/firebase_options_template.dart" ]; then
+          cp lib/firebase_options_template.dart lib/firebase_options.dart
+          # Replace placeholder values with mock values
+          sed -i 's/WEB_API_KEY/mock-api-key/g' lib/firebase_options.dart
+          sed -i 's/WEB_AUTH_DOMAIN/mock-project.firebaseapp.com/g' lib/firebase_options.dart
+          sed -i 's/WEB_PROJECT_ID/mock-project/g' lib/firebase_options.dart
+          sed -i 's/WEB_STORAGE_BUCKET/mock-project.appspot.com/g' lib/firebase_options.dart
+          sed -i 's/WEB_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
+          sed -i 's/WEB_APP_ID/1:123456789012:web:abcdef1234567890/g' lib/firebase_options.dart
+          sed -i 's/WEB_MEASUREMENT_ID/G-ABCDEFGHIJ/g' lib/firebase_options.dart
+          
+          # Also replace other platform values
+          sed -i 's/ANDROID_API_KEY/mock-api-key/g' lib/firebase_options.dart
+          sed -i 's/ANDROID_APP_ID/1:123456789012:android:abcdef1234567890/g' lib/firebase_options.dart
+          sed -i 's/ANDROID_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
+          sed -i 's/ANDROID_PROJECT_ID/mock-project/g' lib/firebase_options.dart
+          sed -i 's/ANDROID_STORAGE_BUCKET/mock-project.appspot.com/g' lib/firebase_options.dart
+          
+          sed -i 's/IOS_API_KEY/mock-api-key/g' lib/firebase_options.dart
+          sed -i 's/IOS_APP_ID/1:123456789012:ios:abcdef1234567890/g' lib/firebase_options.dart
+          sed -i 's/IOS_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
+          sed -i 's/IOS_PROJECT_ID/mock-project/g' lib/firebase_options.dart
+          sed -i 's/IOS_STORAGE_BUCKET/mock-project.appspot.com/g' lib/firebase_options.dart
+          sed -i 's/IOS_BUNDLE_ID/com.example.app/g' lib/firebase_options.dart
+          
+          sed -i 's/MACOS_API_KEY/mock-api-key/g' lib/firebase_options.dart
+          sed -i 's/MACOS_APP_ID/1:123456789012:macos:abcdef1234567890/g' lib/firebase_options.dart
+          sed -i 's/MACOS_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
+          sed -i 's/MACOS_PROJECT_ID/mock-project/g' lib/firebase_options.dart
+          sed -i 's/MACOS_STORAGE_BUCKET/mock-project.appspot.com/g' lib/firebase_options.dart
+          sed -i 's/MACOS_BUNDLE_ID/com.example.app/g' lib/firebase_options.dart
+          
+          sed -i 's/WINDOWS_API_KEY/mock-api-key/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_APP_ID/1:123456789012:windows:abcdef1234567890/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_PROJECT_ID/mock-project/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_AUTH_DOMAIN/mock-project.firebaseapp.com/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_STORAGE_BUCKET/mock-project.appspot.com/g' lib/firebase_options.dart
+          sed -i 's/WINDOWS_MEASUREMENT_ID/G-ABCDEFGHIJ/g' lib/firebase_options.dart
+        else
+          echo "Error: firebase_options_template.dart not found!"
+          exit 1
+        fi
+    
     - name: Build web
       run: |
         cd app
