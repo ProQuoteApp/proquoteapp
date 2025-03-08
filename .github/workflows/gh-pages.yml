@@ -1,0 +1,34 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.0'  # Adjust to your Flutter version
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: |
+        cd proquoteapp/app
+        flutter pub get
+    
+    - name: Build web
+      run: |
+        cd proquoteapp/app
+        flutter build web --release --base-href /proquoteapp/
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./proquoteapp/app/build/web
