@@ -5,6 +5,8 @@ import '../models/user_profile.dart';
 import '../utils/constants.dart';
 import '../utils/platform_helper.dart';
 import '../widgets/error_display.dart';
+import 'forgot_password_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -433,7 +435,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () {
-                                // Forgot password functionality
+                                GoRouter.of(context).push('/forgot-password');
                               },
                               child: Text(
                                 'Forgot Password?',

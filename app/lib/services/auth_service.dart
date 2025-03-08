@@ -286,6 +286,44 @@ class AuthService {
     }
   }
 
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Failed to send password reset email: ${e.toString()}');
+    }
+  }
+  
+  /// Verify password reset code and set new password
+  Future<void> confirmPasswordReset({
+    required String code, 
+    required String newPassword
+  }) async {
+    try {
+      await _firebaseAuth.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Failed to reset password: ${e.toString()}');
+    }
+  }
+  
+  /// Check if password reset code is valid
+  Future<bool> verifyPasswordResetCode(String code) async {
+    try {
+      await _firebaseAuth.verifyPasswordResetCode(code);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// Create a user profile in Firestore
   Future<void> _createUserProfile({
     required String uid,

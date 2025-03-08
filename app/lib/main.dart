@@ -9,6 +9,7 @@ import 'package:proquote/screens/provider_list_screen.dart';
 import 'package:proquote/screens/login_screen.dart';
 import 'package:proquote/screens/jobs_screen.dart';
 import 'package:proquote/screens/messages_screen.dart';
+import 'package:proquote/screens/forgot_password_screen.dart';
 import 'package:proquote/theme/app_theme.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/providers/auth_provider.dart';
@@ -91,6 +92,10 @@ GoRouter _buildRouter(AuthProvider authProvider) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: '/',
