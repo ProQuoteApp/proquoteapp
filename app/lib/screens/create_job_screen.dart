@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:proquote/providers/auth_provider.dart';
+import 'package:proquote/providers/job_provider.dart';
+import 'package:proquote/services/job_service.dart';
+import 'package:proquote/widgets/address_autocomplete.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:intl/intl.dart';
-import 'package:proquote/utils/mock_data.dart';
-import 'package:proquote/utils/constants.dart';
 
 class CreateJobScreen extends StatefulWidget {
   const CreateJobScreen({super.key});
@@ -16,10 +21,20 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
   final _descriptionController = TextEditingController();
   final _locationController = TextEditingController();
   
-  String _selectedCategory = MockData.serviceCategories[0]['name'] as String;
   DateTime _preferredDate = DateTime.now().add(const Duration(days: 3));
-  // TODO: Implement image upload functionality
-  // final List<String> _images = [];
+  String _selectedCategory = 'Plumbing'; // Default category
+  bool _isSubmitting = false;
+  String? _error;
+  
+  // List of service categories
+  final List<String> _categories = [
+    'Plumbing',
+    'Electrical',
+    'Painting',
+    'Cleaning',
+    'Gardening',
+    'Carpentry',
+  ];
 
   @override
   void dispose() {
@@ -27,20 +42,6 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     _descriptionController.dispose();
     _locationController.dispose();
     super.dispose();
-  }
-
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      // In a real app, this would create a new job
-      // For now, just show a success message and navigate back
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Job created successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context);
-    }
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -57,191 +58,248 @@ class _CreateJobScreenState extends State<CreateJobScreen> {
     }
   }
 
+  Future<void> _submitForm() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      setState(() {
+        _isSubmitting = true;
+        _error = null;
+      });
+
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final jobProvider = Provider.of<JobProvider>(context, listen: false);
+        
+        if (authProvider.currentUser == null) {
+          throw Exception('You must be logged in to create a job');
+        }
+        
+        final job = await jobProvider.createJob(
+          title: _titleController.text,
+          description: _descriptionController.text,
+          category: _selectedCategory,
+          location: _locationController.text,
+          preferredDate: _preferredDate,
+          images: [], // No images for now
+          userId: authProvider.currentUser!.uid,
+        );
+        
+        if (job != null) {
+          if (mounted) {
+            // Show success message and navigate to job details
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Job created successfully')),
+            );
+            context.go('/job/${job.id}');
+          }
+        } else {
+          throw Exception('Failed to create job');
+        }
+      } catch (e) {
+        setState(() {
+          _error = e.toString();
+        });
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSubmitting = false;
+          });
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Get screen width to handle responsive layout
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen = screenWidth > 900;
-    final isMediumScreen = screenWidth > 600 && screenWidth <= 900;
-    
-    // Calculate content width based on screen size
-    final contentWidth = isLargeScreen 
-        ? 900.0 
-        : isMediumScreen 
-            ? screenWidth * 0.9 
-            : screenWidth;
-            
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create New Job'),
-        centerTitle: isLargeScreen,
+        title: const Text('Create Job'),
       ),
-      body: Center(
-        child: SizedBox(
-          width: contentWidth,
-          child: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppConstants.screenPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Job Details',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Title
-                  TextFormField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Job Title',
-                      hintText: 'e.g. Fix leaking bathroom sink',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a job title';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Category
-                  DropdownButtonFormField<String>(
-                    value: _selectedCategory,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                    ),
-                    items: MockData.serviceCategories
-                        .map((category) => DropdownMenuItem<String>(
-                              value: category['name'] as String,
-                              child: Text(category['name'] as String),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedCategory = value;
-                        });
-                      }
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select a category';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Description
-                  TextFormField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(
-                      labelText: 'Description',
-                      hintText: 'Describe the job in detail',
-                    ),
-                    maxLines: 5,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a job description';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Location
-                  TextFormField(
-                    controller: _locationController,
-                    decoration: const InputDecoration(
-                      labelText: 'Location',
-                      hintText: 'e.g. Sandton, Johannesburg',
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a location';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Preferred date
-                  InkWell(
-                    onTap: () => _selectDate(context),
-                    child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Preferred Date',
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            DateFormat('MMMM dd, yyyy').format(_preferredDate),
-                          ),
-                          const Icon(Icons.calendar_today),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  // Images
-                  Text(
-                    'Add Photos',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add photos to help service providers understand your job better',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Image picker
-                  Container(
-                    height: 120,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Error message if any
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.grey[300]!,
-                        width: 1,
-                      ),
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
                     ),
-                    child: Center(
-                      child: IconButton(
-                        icon: const Icon(Icons.add_a_photo),
-                        onPressed: () {
-                          // In a real app, this would open the image picker
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Image picker would open here'),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  // Submit button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _submitForm,
-                      child: const Text('Create Job'),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Error',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                              Text(_error!, style: TextStyle(color: Colors.red.shade700)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
+              
+              // Title
+              const Text('Job Title'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Fix leaking bathroom sink',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title';
+                  }
+                  return null;
+                },
               ),
-            ),
+              const SizedBox(height: 16),
+              
+              // Category
+              const Text('Category'),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                items: _categories.map((category) {
+                  return DropdownMenuItem<String>(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedCategory = value;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Description
+              const Text('Description'),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  hintText: 'Describe the job in detail...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                minLines: 3,
+                maxLines: 5,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Location
+              const Text('Location'),
+              const SizedBox(height: 8),
+              AddressAutocomplete(
+                initialValue: _locationController.text,
+                onAddressSelected: (address) {
+                  _locationController.text = address;
+                },
+                decoration: InputDecoration(
+                  labelText: 'Address',
+                  hintText: 'Enter your address',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).cardColor,
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a location';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              
+              // Preferred Date
+              const Text('Preferred Date'),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => _selectDate(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(DateFormat('EEEE, MMMM d, yyyy').format(_preferredDate)),
+                      const Icon(Icons.calendar_today),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Submit button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : _submitForm,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Create Job'),
+                ),
+              ),
+            ],
           ),
         ),
       ),

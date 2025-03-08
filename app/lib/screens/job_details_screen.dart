@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:proquote/models/job.dart';
 import 'package:proquote/models/quote.dart';
-import 'package:proquote/utils/mock_data.dart';
+import 'package:proquote/providers/quote_provider.dart';
 import 'package:proquote/widgets/quote_card.dart';
 import 'package:proquote/utils/constants.dart';
 
@@ -17,286 +18,230 @@ class JobDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Get quotes for this job
-    final List<Quote> jobQuotes = MockData.quotes
-        .where((quote) => quote.jobId == job.id)
-        .toList();
-        
-    // Get screen width to handle responsive layout
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen = screenWidth > 900;
-    final isMediumScreen = screenWidth > 600 && screenWidth <= 900;
-    
-    // Calculate content width based on screen size
-    final contentWidth = isLargeScreen 
-        ? 900.0 
-        : isMediumScreen 
-            ? screenWidth * 0.9 
-            : screenWidth;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Job Details'),
-        centerTitle: isLargeScreen,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () {
-              // Navigate to edit job
-            },
-          ),
-        ],
       ),
-      body: Center(
-        child: SizedBox(
-          width: contentWidth,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppConstants.screenPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Job images
-                if (job.images.isNotEmpty)
-                  SizedBox(
-                    height: 250,
-                    child: PageView.builder(
-                      itemCount: job.images.length,
-                      itemBuilder: (context, index) {
-                        return CachedNetworkImage(
-                          imageUrl: job.images[index],
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.error),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                // Job details
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(job.status).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              _getStatusText(job.status),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: _getStatusColor(job.status),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              job.category,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        job.title,
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildInfoRow(
-                        context,
-                        Icons.location_on,
-                        'Location',
-                        job.location,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        context,
-                        Icons.calendar_today,
-                        'Preferred Date',
-                        DateFormat('MMMM dd, yyyy').format(job.preferredDate),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildInfoRow(
-                        context,
-                        Icons.access_time,
-                        'Posted',
-                        DateFormat('MMMM dd, yyyy').format(job.createdAt),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Description',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        job.description,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Quotes section
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Quotes (${jobQuotes.length})',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          if (job.status == 'open')
-                            TextButton.icon(
-                              onPressed: () {
-                                // Navigate to find providers
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Request More Quotes'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      if (jobQuotes.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.description_outlined,
-                                  size: 64,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No quotes yet',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Request quotes from service providers',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: Colors.grey[600],
-                                      ),
-                                ),
-                                const SizedBox(height: 24),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    // Navigate to find providers
-                                  },
-                                  icon: const Icon(Icons.search),
-                                  label: const Text('Find Service Providers'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: jobQuotes.length,
-                          itemBuilder: (context, index) {
-                            final quote = jobQuotes[index];
-                            return QuoteCard(
-                              quote: quote,
-                              onTap: () {
-                                // Navigate to quote details
-                              },
-                              onAccept: quote.status == 'pending'
-                                  ? () {
-                                      // Accept quote
-                                    }
-                                  : null,
-                              onReject: quote.status == 'pending'
-                                  ? () {
-                                      // Reject quote
-                                    }
-                                  : null,
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Job title
+            Text(
+              job.title,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-          ),
+            const SizedBox(height: 8),
+            
+            // Job status
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getStatusColor(job.status).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                _getStatusText(job.status),
+                style: TextStyle(
+                  color: _getStatusColor(job.status),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Job details
+            _buildInfoRow(context, 'Category', job.category),
+            _buildInfoRow(context, 'Location', job.location),
+            _buildInfoRow(
+              context, 
+              'Created', 
+              DateFormat('MMM d, yyyy').format(job.createdAt),
+            ),
+            _buildInfoRow(
+              context, 
+              'Preferred Date', 
+              DateFormat('MMM d, yyyy').format(job.preferredDate),
+            ),
+            const SizedBox(height: 16),
+            
+            // Job description
+            Text(
+              'Description',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(job.description),
+            const SizedBox(height: 24),
+            
+            // Job images
+            if (job.images.isNotEmpty) ...[
+              Text(
+                'Images',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: job.images.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        right: index < job.images.length - 1 ? 8 : 0,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          job.images[index],
+                          height: 120,
+                          width: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            
+            // Quotes section
+            Text(
+              'Quotes',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Quotes list
+            Consumer<QuoteProvider>(
+              builder: (context, quoteProvider, _) {
+                if (quoteProvider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (quoteProvider.error != null) {
+                  return Center(
+                    child: Text('Error: ${quoteProvider.error}'),
+                  );
+                }
+                
+                final quotes = quoteProvider.jobQuotes;
+                
+                if (quotes == null || quotes.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text('No quotes yet for this job'),
+                    ),
+                  );
+                }
+                
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: quotes.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        bottom: index < quotes.length - 1 ? 16 : 0,
+                      ),
+                      child: QuoteCard(
+                        quote: quotes[index],
+                        onTap: () {
+                          // View quote details
+                          // For now, just show a snackbar
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Viewing quote from ${quotes[index].provider.name}'),
+                            ),
+                          );
+                        },
+                        onAccept: () => _handleQuoteAction(
+                          context, 
+                          quotes[index], 
+                          'accepted',
+                        ),
+                        onReject: () => _handleQuoteAction(
+                          context, 
+                          quotes[index], 
+                          'rejected',
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
-
-  Widget _buildInfoRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Colors.grey[600],
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
-                ),
+  
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
               ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Text(value),
+          ),
+        ],
+      ),
     );
+  }
+  
+  Future<void> _handleQuoteAction(
+    BuildContext context, 
+    Quote quote, 
+    String status,
+  ) async {
+    final quoteProvider = Provider.of<QuoteProvider>(context, listen: false);
+    
+    try {
+      final success = await quoteProvider.updateQuoteStatus(quote.id, status);
+      
+      if (success && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'accepted' 
+                  ? 'Quote accepted successfully' 
+                  : 'Quote rejected successfully',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Color _getStatusColor(String status) {

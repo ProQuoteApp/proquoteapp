@@ -1,18 +1,99 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow authenticated users to read and write their own data
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isJobOwner(jobId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/jobs/$(jobId)) && 
+             get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+    }
+    
+    function isServiceProvider() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == "provider";
+    }
+    
+    // User profiles
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Users can read and write their own data
+      allow read, write: if isOwner(userId);
+      
+      // Allow reading basic profile info for all authenticated users
+      // This is needed for displaying provider info in quotes, etc.
+      allow read: if isAuthenticated() && 
+                    (resource.data.userType == "provider" || 
+                     resource.data.keys().hasOnly(["displayName", "photoURL", "userType"]));
     }
     
-    // Allow authenticated users to read and write their own jobs
+    // Jobs
     match /jobs/{jobId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && resource.data.userId == request.auth.uid;
+      // Anyone authenticated can read jobs
+      allow read: if isAuthenticated();
+      
+      // Only the job creator can update or delete
+      allow update, delete: if isOwner(resource.data.userId);
+      
+      // Anyone authenticated can create a job
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.status == "open";
     }
     
-    // Default deny all
+    // Quotes
+    match /quotes/{quoteId} {
+      // Anyone authenticated can read quotes
+      allow read: if isAuthenticated();
+      
+      // Service providers can create quotes for open jobs
+      allow create: if isAuthenticated() && 
+                      isServiceProvider() &&
+                      exists(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)) &&
+                      get(/databases/$(database)/documents/jobs/$(request.resource.data.jobId)).data.status == "open" &&
+                      request.resource.data.provider.id == request.auth.uid &&
+                      request.resource.data.status == "pending";
+      
+      // Job owners can update quote status (accept/reject)
+      allow update: if isJobOwner(resource.data.jobId) && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"]);
+      
+      // Quote creators (providers) can update their own quotes if the job is still open
+      allow update: if isAuthenticated() && 
+                      resource.data.provider.id == request.auth.uid &&
+                      get(/databases/$(database)/documents/jobs/$(resource.data.jobId)).data.status == "open" &&
+                      resource.data.status == "pending";
+    }
+    
+    // Service categories (read-only for users)
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only admins can modify categories (handled in custom admin functions)
+    }
+    
+    // Messages
+    match /messages/{messageId} {
+      // Users can read messages they're involved in
+      allow read: if isAuthenticated() && 
+                    (resource.data.senderId == request.auth.uid || 
+                     resource.data.recipientId == request.auth.uid);
+      
+      // Users can create messages
+      allow create: if isAuthenticated() && 
+                      request.resource.data.senderId == request.auth.uid;
+      
+      // No updates or deletes for messages
+      allow update, delete: if false;
+    }
+    
+    // Default deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

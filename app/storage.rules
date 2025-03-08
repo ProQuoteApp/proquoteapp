@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Job images
+    match /jobs/{jobId}/{imageId} {
+      // Anyone authenticated can read job images
+      allow read: if isAuthenticated();
+      
+      // Only the job creator can upload images
+      allow create, update, delete: if isAuthenticated() &&
+                                      exists(/databases/$(database)/documents/jobs/$(jobId)) &&
+                                      get(/databases/$(database)/documents/jobs/$(jobId)).data.userId == request.auth.uid;
+    }
+    
+    // User profile images
+    match /users/{userId}/{imageId} {
+      // Anyone can read profile images
+      allow read: if true;
+      
+      // Only the user can upload their own profile image
+      allow create, update, delete: if isOwner(userId);
+    }
+    
+    // Default deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+} 
