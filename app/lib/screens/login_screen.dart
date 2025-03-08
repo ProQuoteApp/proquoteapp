@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
 import '../utils/constants.dart';
@@ -257,39 +258,23 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 
                 // Tab Bar for Sign In / Sign Up
                 if (!_isPhoneAuth || !_authProvider.isPhoneVerificationInProgress)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        borderRadius: BorderRadius.circular(50),
-                        color: Theme.of(context).primaryColor,
+                  ShadTabs<int>(
+                    value: _tabController.index,
+                    onChanged: (index) {
+                      setState(() {
+                        _tabController.index = index;
+                      });
+                    },
+                    tabs: [
+                      ShadTab(
+                        value: 0,
+                        child: const Text('Sign In'),
                       ),
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.grey[700],
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: Colors.transparent,
-                      labelStyle: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      ShadTab(
+                        value: 1,
+                        child: const Text('Sign Up'),
                       ),
-                      tabs: const [
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Sign In'),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Sign Up'),
-                        ),
-                      ],
-                      onTap: (_) {
-                        // Force rebuild to update form validation
-                        setState(() {});
-                      },
-                    ),
+                    ],
                   ),
                 
                 const SizedBox(height: 32),
@@ -317,26 +302,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Full Name',
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            
                             const SizedBox(height: 8),
-                            TextFormField(
+                            ShadInputFormField(
                               controller: _nameController,
-                              decoration: InputDecoration(
-                                hintText: 'Enter your full name',
-                                prefixIcon: const Icon(Icons.person_outline),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
+                              label: const Text('Full Name'),
+                              placeholder: const Text('Enter your full name'),
                               validator: (value) {
                                 if (_tabController.index == 1 && (value == null || value.isEmpty)) {
                                   return 'Please enter your name';
@@ -350,26 +321,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       
                       // Email & Password Fields
                       if (!_isPhoneAuth) ...[
-                        Text(
-                          'Email',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        
                         const SizedBox(height: 8),
-                        TextFormField(
+                        ShadInputFormField(
                           controller: _emailController,
-                          decoration: InputDecoration(
-                            hintText: 'Enter your email',
-                            prefixIcon: const Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
+                          label: const Text('Email'),
+                          placeholder: const Text('Enter your email'),
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -384,40 +341,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         
                         const SizedBox(height: 24),
                         
-                        Text(
-                          'Password',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        
                         const SizedBox(height: 8),
-                        TextFormField(
+                        ShadInputFormField(
                           controller: _passwordController,
-                          decoration: InputDecoration(
-                            hintText: _tabController.index == 0 
-                                ? 'Enter your password' 
-                                : 'Create a password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword 
-                                    ? Icons.visibility_outlined 
-                                    : Icons.visibility_off_outlined,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
+                          label: const Text('Password'),
+                          placeholder: Text(_tabController.index == 0 
+                              ? 'Enter your password' 
+                              : 'Create a password'),
                           obscureText: _obscurePassword,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -428,6 +359,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             }
                             return null;
                           },
+                          trailing: IconButton(
+                            icon: Icon(
+                              _obscurePassword 
+                                  ? Icons.visibility_outlined 
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
                         ),
                         
                         if (_tabController.index == 0) // Sign In
@@ -455,19 +398,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                         ),
                         const SizedBox(height: 8),
-                        TextFormField(
+                        ShadInputFormField(
                           controller: _phoneController,
-                          decoration: InputDecoration(
-                            hintText: '+27 82 123 4567',
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
+                          label: const Text('Phone Number'),
+                          placeholder: const Text('+27 82 123 4567'),
                           keyboardType: TextInputType.phone,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -478,50 +412,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                         if (_isVerificationSent) ...[
                           const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.check_circle, color: Colors.green.shade700, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Verification code sent! Please check your phone.',
-                                    style: TextStyle(color: Colors.green.shade700),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          ShadAlert(
+                            title: const Text('Verification code sent!'),
+                            description: const Text('Please check your phone.'),
                           ),
                         ],
                       ]
                       // Verification Code
                       else ...[
-                        Text(
-                          'Verification Code',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        
                         const SizedBox(height: 8),
-                        TextFormField(
+                        ShadInputFormField(
                           controller: _smsCodeController,
-                          decoration: InputDecoration(
-                            hintText: '123456',
-                            prefixIcon: const Icon(Icons.sms_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
+                          label: const Text('Verification Code'),
+                          placeholder: const Text('123456'),
                           keyboardType: TextInputType.number,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -559,9 +463,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 value: UserType.seeker,
                                 groupValue: _userType,
                                 onChanged: (value) {
-                                  setState(() {
-                                    _userType = value!;
-                                  });
+                                  if (value != null) {
+                                    setState(() {
+                                      _userType = value;
+                                    });
+                                  }
                                 },
                                 contentPadding: EdgeInsets.zero,
                                 dense: true,
@@ -573,9 +479,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 value: UserType.provider,
                                 groupValue: _userType,
                                 onChanged: (value) {
-                                  setState(() {
-                                    _userType = value!;
-                                  });
+                                  if (value != null) {
+                                    setState(() {
+                                      _userType = value;
+                                    });
+                                  }
                                 },
                                 contentPadding: EdgeInsets.zero,
                                 dense: true,
@@ -588,42 +496,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       const SizedBox(height: 32),
                       
                       // Submit Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: isLoading
-                              ? null
-                              : (_isPhoneAuth
-                                  ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? _verifyPhoneCode : _verifyPhoneNumber)
-                                  : _submitForm),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(
-                                  _isPhoneAuth
-                                      ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? 'Verify Code' : 'Send Verification Code')
-                                      : (_tabController.index == 0 ? 'Sign In' : 'Sign Up'),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                      ShadButton(
+                        onPressed: isLoading
+                            ? null
+                            : (_isPhoneAuth
+                                ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? _verifyPhoneCode : _verifyPhoneNumber)
+                                : _submitForm),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
-                        ),
+                              )
+                            : Text(
+                                _isPhoneAuth
+                                    ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? 'Verify Code' : 'Send Verification Code')
+                                    : (_tabController.index == 0 ? 'Sign In' : 'Sign Up'),
+                              ),
                       ),
                       
                       const SizedBox(height: 24),
@@ -664,15 +556,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           // Google Button - Only show if supported on this platform
                           if (PlatformHelper.isFeatureSupported('supportsGoogleSignIn'))
                             Expanded(
-                              child: OutlinedButton(
+                              child: ShadButton.outline(
                                 onPressed: isLoading ? null : _handleGoogleSignIn,
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -706,23 +591,22 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           // Phone Button - Only show if supported on this platform
                           if (PlatformHelper.isFeatureSupported('supportsPhoneAuth'))
                             Expanded(
-                              child: OutlinedButton.icon(
+                              child: ShadButton.outline(
                                 onPressed: isLoading ? null : _togglePhoneAuth,
-                                icon: const Icon(Icons.phone, size: 20),
-                                label: Text(_isPhoneAuth ? 'Email' : 'Phone'),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.phone, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(_isPhoneAuth ? 'Email' : 'Phone'),
+                                  ],
                                 ),
                               ),
                             ),
                           // Apple Button - Only show on iOS
                           if (PlatformHelper.isFeatureSupported('supportsAppleSignIn'))
                             Expanded(
-                              child: OutlinedButton.icon(
+                              child: ShadButton.outline(
                                 onPressed: isLoading ? null : () {
                                   // TODO: Implement Apple Sign In
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -731,14 +615,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                     ),
                                   );
                                 },
-                                icon: const Icon(Icons.apple, size: 20),
-                                label: const Text('Apple'),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: Colors.grey.shade300),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.apple, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text('Apple'),
+                                  ],
                                 ),
                               ),
                             ),

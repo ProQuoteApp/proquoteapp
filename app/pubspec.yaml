@@ -52,6 +52,7 @@ dependencies:
   google_sign_in: ^6.2.1
   sign_in_with_apple: ^5.0.0
   flutter_typeahead: ^5.2.0
+  shadcn_ui: ^0.22.5
 
 dev_dependencies:
   flutter_test:

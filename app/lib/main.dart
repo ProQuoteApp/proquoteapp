@@ -11,10 +11,12 @@ import 'package:proquote/screens/jobs_screen.dart';
 import 'package:proquote/screens/messages_screen.dart';
 import 'package:proquote/screens/forgot_password_screen.dart';
 import 'package:proquote/theme/app_theme.dart';
+import 'package:proquote/theme/shadcn_theme.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -53,11 +55,13 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
-          return MaterialApp.router(
-            title: 'ProQuote',
-            theme: AppTheme.getTheme(),
-            routerConfig: _buildRouter(authProvider),
-            debugShowCheckedModeBanner: false,
+          return ShadApp.custom(
+            appBuilder: (context, theme) => MaterialApp.router(
+              title: 'ProQuote',
+              theme: theme,
+              routerConfig: _buildRouter(authProvider),
+              debugShowCheckedModeBanner: false,
+            ),
           );
         },
       ),
