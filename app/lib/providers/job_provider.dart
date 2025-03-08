@@ -193,8 +193,8 @@ class JobProvider extends ChangeNotifier {
     required String category,
     required String location,
     required DateTime preferredDate,
-    required List<String> images,
     required String userId,
+    List<String> images = const [],
   }) async {
     _isLoading = true;
     _error = null;
@@ -365,6 +365,49 @@ class JobProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to update job status: $e';
       print('JobProvider: Error updating job status: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Update an existing job
+  Future<bool> updateJob(Job job) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // First update the job status which is the only field we can update for now
+      final success = await _jobService.updateJobStatus(job.id, job.status);
+      
+      if (success) {
+        // Update the current job if it's the one being edited
+        if (_currentJob != null && _currentJob!.id == job.id) {
+          _currentJob = job;
+        }
+        
+        // Update the job in the user's jobs list
+        if (_userJobs != null) {
+          final index = _userJobs!.indexWhere((j) => j.id == job.id);
+          if (index != -1) {
+            _userJobs![index] = job;
+          }
+        }
+        
+        // Remove from open jobs if status is no longer open
+        if (_openJobs != null && job.status != 'open') {
+          _openJobs!.removeWhere((j) => j.id == job.id);
+        }
+      } else {
+        _error = 'Failed to update job';
+      }
+      
+      return success;
+    } catch (e) {
+      _error = 'Failed to update job: $e';
+      print('JobProvider: Error updating job: $e');
       return false;
     } finally {
       _isLoading = false;

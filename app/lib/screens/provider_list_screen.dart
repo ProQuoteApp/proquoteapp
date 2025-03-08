@@ -3,6 +3,7 @@ import 'package:proquote/models/provider.dart';
 import 'package:proquote/utils/mock_data.dart';
 import 'package:proquote/widgets/provider_card.dart';
 import 'package:proquote/utils/constants.dart';
+import 'package:proquote/widgets/app_header.dart';
 
 class ProviderListScreen extends StatefulWidget {
   final String? categoryFilter;
@@ -66,12 +67,15 @@ class _ProviderListScreenState extends State<ProviderListScreen> {
             ? screenWidth * 0.9 
             : screenWidth;
             
+    final title = widget.categoryFilter != null
+        ? '${widget.categoryFilter} Providers'
+        : 'Service Providers';
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.categoryFilter != null
-            ? '${widget.categoryFilter} Providers'
-            : 'Service Providers'),
+      appBar: AppHeader(
+        title: title,
         centerTitle: isLargeScreen,
+        showBackButton: true,
       ),
       body: Center(
         child: SizedBox(
@@ -86,20 +90,12 @@ class _ProviderListScreenState extends State<ProviderListScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search providers...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                                _filterProviders();
-                              });
-                            },
-                          )
-                        : null,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
                     ),
                   ),
                   onChanged: (value) {
@@ -110,41 +106,7 @@ class _ProviderListScreenState extends State<ProviderListScreen> {
                   },
                 ),
               ),
-
-              // Filter chips
-              if (widget.categoryFilter == null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    height: 40,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: MockData.serviceCategories.length,
-                      itemBuilder: (context, index) {
-                        final category = MockData.serviceCategories[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            label: Text(category['name'] as String),
-                            selected: false,
-                            onSelected: (selected) {
-                              // In a real app, this would filter by category
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ProviderListScreen(
-                                    categoryFilter: category['name'] as String,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
+              
               // Provider list
               Expanded(
                 child: _filteredProviders.isEmpty
@@ -157,33 +119,46 @@ class _ProviderListScreenState extends State<ProviderListScreen> {
                               size: 64,
                               color: Colors.grey[400],
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: AppConstants.itemSpacing),
                             Text(
                               'No providers found',
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                     color: Colors.grey[600],
                                   ),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Try adjusting your search or filters',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                            ),
+                            if (widget.categoryFilter != null)
+                              Padding(
+                                padding: const EdgeInsets.all(AppConstants.itemSpacing),
+                                child: Text(
+                                  'Try searching for a different category',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                        color: Colors.grey[600],
+                                      ),
+                                ),
+                              ),
                           ],
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(AppConstants.screenPadding),
                         itemCount: _filteredProviders.length,
                         itemBuilder: (context, index) {
                           final provider = _filteredProviders[index];
-                          return ProviderCard(
-                            provider: provider,
-                            onTap: () {
-                              // Navigate to provider details
-                            },
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: AppConstants.itemSpacing),
+                            child: ProviderCard(
+                              provider: provider,
+                              onTap: () {
+                                // Navigate to provider details
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Selected ${provider.name}'),
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                            ),
                           );
                         },
                       ),

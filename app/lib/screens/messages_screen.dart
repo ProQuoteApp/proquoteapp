@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:proquote/utils/constants.dart';
+import 'package:proquote/widgets/app_header.dart';
 
 class MessagesScreen extends StatelessWidget {
   const MessagesScreen({super.key});
@@ -19,8 +20,8 @@ class MessagesScreen extends StatelessWidget {
             : screenWidth;
             
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messages'),
+      appBar: AppHeader(
+        title: 'Messages',
         centerTitle: isLargeScreen,
       ),
       body: Center(

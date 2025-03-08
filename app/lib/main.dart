@@ -183,6 +183,35 @@ GoRouter _buildRouter(AuthProvider authProvider) {
             builder: (context, state) => const MainScreen(child: CreateJobScreen()),
           ),
           GoRoute(
+            path: 'edit-job/:jobId',
+            builder: (context, state) {
+              final jobId = state.pathParameters['jobId']!;
+              return MainScreen(
+                child: Consumer<JobProvider>(
+                  builder: (context, jobProvider, _) {
+                    // Load the job if not already loaded
+                    if (jobProvider.currentJob?.id != jobId) {
+                      Future.microtask(() => jobProvider.loadJob(jobId));
+                    }
+                    
+                    // Show loading indicator while job is loading
+                    if (jobProvider.isLoading || jobProvider.currentJob == null) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    // Show error if job not found
+                    if (jobProvider.error != null) {
+                      return Center(child: Text('Error: ${jobProvider.error}'));
+                    }
+                    
+                    // Pass the job to the create job screen for editing
+                    return CreateJobScreen(jobToEdit: jobProvider.currentJob);
+                  },
+                ),
+              );
+            },
+          ),
+          GoRoute(
             path: 'providers',
             builder: (context, state) {
               final uri = Uri.parse(state.uri.toString());
@@ -262,22 +291,114 @@ class AppBottomNavigationBar extends StatelessWidget {
           unselectedItemColor: theme.colorScheme.mutedForeground,
         ),
       ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        items: _items
-            .map(
-              (item) => BottomNavigationBarItem(
-                icon: Icon(item.$1),
-                label: item.$2,
+      child: BottomAppBar(
+        height: kBottomNavigationBarHeight,
+        padding: EdgeInsets.zero,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // First two items
+            for (int i = 0; i < 2; i++)
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    if (currentIndex != i) {
+                      context.go(_items[i].$3);
+                    }
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _items[i].$1,
+                        color: currentIndex == i
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.mutedForeground,
+                      ),
+                      Text(
+                        _items[i].$2,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: currentIndex == i
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            )
-            .toList(),
-        onTap: (index) {
-          if (currentIndex != index) {
-            context.go(_items[index].$3);
-          }
-        },
+            
+            // Middle create job button
+            Expanded(
+              child: InkWell(
+                onTap: () {
+                  context.go('/create-job');
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        color: theme.colorScheme.primaryForeground,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Create',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Last two items
+            for (int i = 2; i < 4; i++)
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    if (currentIndex != i) {
+                      context.go(_items[i].$3);
+                    }
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _items[i].$1,
+                        color: currentIndex == i
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.mutedForeground,
+                      ),
+                      Text(
+                        _items[i].$2,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: currentIndex == i
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

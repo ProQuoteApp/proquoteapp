@@ -8,6 +8,7 @@ import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
 import 'package:proquote/widgets/error_display.dart';
 import 'package:proquote/widgets/address_autocomplete.dart';
+import 'package:proquote/widgets/app_header.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -35,10 +36,10 @@ class ProfileScreen extends StatelessWidget {
             : screenWidth;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
+      appBar: AppHeader(
+        title: 'Profile',
         centerTitle: isLargeScreen,
-        actions: [
+        additionalActions: [
           // Add a button to clear image cache
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -50,10 +51,15 @@ class ProfileScreen extends StatelessWidget {
               // Show a snackbar to confirm
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Image cache cleared. Restart the app to see changes.'),
-                  duration: Duration(seconds: 3),
+                  content: Text('Image cache cleared'),
+                  duration: Duration(seconds: 2),
                 ),
               );
+              
+              // Refresh the user data
+              if (authUser != null) {
+                userProvider.loadUser(authUser);
+              }
             },
           ),
           if (user != null && firestoreAvailable)
@@ -455,10 +461,10 @@ class EditProfileScreenState extends State<EditProfileScreen> {
             : screenWidth;
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
+      appBar: AppHeader(
+        title: 'Edit Profile',
         centerTitle: isLargeScreen,
-        actions: [
+        additionalActions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading

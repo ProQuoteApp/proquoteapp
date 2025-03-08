@@ -11,6 +11,7 @@ import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/job_provider.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
+import 'package:proquote/widgets/app_header.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -88,30 +89,9 @@ class _HomeScreenState extends State<HomeScreen> {
             : screenWidth;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ProQuote'),
+      appBar: AppHeader(
+        title: 'ProQuote',
         centerTitle: isLargeScreen,
-        actions: [
-          ShadIconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // Navigate to notifications
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: GestureDetector(
-              onTap: () {
-                context.go('/profile');
-              },
-              child: UserAvatar(
-                user: user,
-                authUser: authUser,
-                radius: AppConstants.smallAvatarRadius,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Center(
         child: SizedBox(
@@ -406,15 +386,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           },
                         )
-                      : SizedBox(
-                          height: 180, // Increased from 160
+                      : Container(
+                          height: 200, // Increased height for better visibility on mobile
+                          margin: const EdgeInsets.only(bottom: 16),
                           child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             itemCount: MockData.services.length > 4 ? 4 : MockData.services.length,
                             itemBuilder: (context, index) {
                               final service = MockData.services[index];
-                              return Padding(
-                                padding: EdgeInsets.only(
+                              return Container(
+                                width: 160, // Fixed width for mobile cards
+                                margin: EdgeInsets.only(
                                   right: index < (MockData.services.length > 4 ? 3 : MockData.services.length - 1) ? 12 : 0,
                                 ),
                                 child: ServiceCard(
@@ -433,12 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          context.go('/create-job');
-        },
-        child: const Icon(Icons.add),
       ),
     );
   }
