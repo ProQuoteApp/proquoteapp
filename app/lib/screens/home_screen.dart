@@ -40,7 +40,7 @@ class HomeScreen extends StatelessWidget {
         title: const Text('ProQuote'),
         centerTitle: isLargeScreen,
         actions: [
-          IconButton(
+          ShadIconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
               // Navigate to notifications
@@ -96,11 +96,11 @@ class HomeScreen extends StatelessWidget {
                 // Service categories
                 Text(
                   'Service Categories',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: ShadTheme.of(context).textTheme.h3,
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: 120,
+                  height: 160,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: MockData.serviceCategories.length,
@@ -144,15 +144,18 @@ class HomeScreen extends StatelessWidget {
                             ),
                       ),
                       const Spacer(),
-                      TextButton.icon(
+                      ShadButton.ghost(
                         onPressed: () {
                           // Navigate to all jobs
                           context.go('/jobs');
                         },
-                        icon: const Icon(Icons.arrow_forward),
-                        label: const Text('View All'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Theme.of(context).primaryColor,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('View All'),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward, size: 16),
+                          ],
                         ),
                       ),
                     ],
