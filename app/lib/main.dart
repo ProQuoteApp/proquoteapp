@@ -316,16 +316,16 @@ class AppBottomNavigationBar extends StatelessWidget {
                       children: [
                         Icon(
                           _items[i].$1,
-                          size: 24,
+                          size: 22,
                           color: currentIndex == i
                               ? theme.colorScheme.primary
                               : theme.colorScheme.mutedForeground,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           _items[i].$2,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
                             color: currentIndex == i
                                 ? theme.colorScheme.primary
@@ -348,29 +348,29 @@ class AppBottomNavigationBar extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: theme.colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 8,
+                              blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
                         child: Icon(
                           Icons.add_rounded,
-                          size: 24,
+                          size: 22,
                           color: theme.colorScheme.primaryForeground,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         'Create',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.primary,
                         ),
@@ -395,16 +395,16 @@ class AppBottomNavigationBar extends StatelessWidget {
                       children: [
                         Icon(
                           _items[i].$1,
-                          size: 24,
+                          size: 22,
                           color: currentIndex == i
                               ? theme.colorScheme.primary
                               : theme.colorScheme.mutedForeground,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           _items[i].$2,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
                             color: currentIndex == i
                                 ? theme.colorScheme.primary

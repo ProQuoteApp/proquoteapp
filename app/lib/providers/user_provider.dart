@@ -50,6 +50,7 @@ class UserProvider extends ChangeNotifier {
         
         // Validate profile image URL if present
         if (user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty) {
+          print('UserProvider: Validating profile image URL: ${user.profileImageUrl}');
           try {
             final uri = Uri.parse(user.profileImageUrl!);
             final isValidUrl = uri.isAbsolute && 
@@ -73,6 +74,7 @@ class UserProvider extends ChangeNotifier {
                 isProfileComplete: user.isProfileComplete,
               );
             } else {
+              print('UserProvider: Profile image URL is valid: ${user.profileImageUrl}');
               _currentUser = user;
             }
           } catch (e) {
@@ -93,6 +95,7 @@ class UserProvider extends ChangeNotifier {
             );
           }
         } else {
+          print('UserProvider: No profile image URL found');
           _currentUser = user;
         }
         
@@ -102,15 +105,32 @@ class UserProvider extends ChangeNotifier {
         }
       } else {
         print('UserProvider: User data is null');
-        _error = 'Failed to load user data: User data is null';
+        
+        // Create a basic user from auth data
+        print('UserProvider: Creating basic user from auth data');
+        _currentUser = User.fromAuthAndProfile(authUser, null);
+        
+        _error = 'Failed to load user data from Firestore. Using auth data only.';
+        _firestoreAvailable = false;
       }
     } catch (e) {
       print('UserProvider: Error loading user: $e');
       _handleError(e);
+      
+      // Create a basic user from auth data even if there was an error
+      print('UserProvider: Creating basic user from auth data after error');
+      _currentUser = User.fromAuthAndProfile(authUser, null);
     } finally {
       _isLoading = false;
       notifyListeners();
       print('UserProvider: User loading complete. User: ${_currentUser?.name}, Error: $_error');
+      
+      // Debug the profile image URL
+      if (_currentUser?.profileImageUrl != null) {
+        print('UserProvider: Final profile image URL: ${_currentUser!.profileImageUrl}');
+      } else {
+        print('UserProvider: No profile image URL in final user object');
+      }
     }
   }
   

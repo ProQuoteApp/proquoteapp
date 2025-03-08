@@ -50,6 +50,8 @@ class UserAvatar extends StatelessWidget {
     
     final imageUrl = profileUrl ?? authPhotoUrl;
     
+    debugPrint('UserAvatar: Building avatar with imageUrl: $imageUrl');
+    
     return Stack(
       children: [
         CircleAvatar(
@@ -87,6 +89,7 @@ class UserAvatar extends StatelessWidget {
     
     // If no image URL, show initials
     if (imageUrl == null || imageUrl.isEmpty) {
+      debugPrint('UserAvatar: No image URL, showing initials: $initials');
       return _buildInitialsAvatar(initials, context);
     }
     
@@ -94,16 +97,22 @@ class UserAvatar extends StatelessWidget {
     bool isValidUrl = false;
     try {
       final uri = Uri.parse(imageUrl);
-      isValidUrl = uri.isAbsolute && uri.host.isNotEmpty;
+      isValidUrl = uri.isAbsolute && 
+                  (uri.scheme == 'http' || uri.scheme == 'https') && 
+                  uri.host.isNotEmpty;
+      
+      debugPrint('UserAvatar: URL validation - isAbsolute: ${uri.isAbsolute}, scheme: ${uri.scheme}, host: ${uri.host}');
     } catch (e) {
-      debugPrint('Invalid image URL: $e');
+      debugPrint('UserAvatar: Invalid image URL format: $e');
       return _buildInitialsAvatar(initials, context);
     }
     
     if (!isValidUrl) {
-      debugPrint('URL failed validation: $imageUrl');
+      debugPrint('UserAvatar: URL failed validation: $imageUrl');
       return _buildInitialsAvatar(initials, context);
     }
+    
+    debugPrint('UserAvatar: Loading image from URL: $imageUrl');
     
     // Use CachedNetworkImage with fallback
     return ClipOval(
@@ -114,9 +123,12 @@ class UserAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         fadeInDuration: const Duration(milliseconds: 300),
         fadeOutDuration: const Duration(milliseconds: 300),
-        placeholder: (context, url) => _buildInitialsAvatar(initials, context),
+        placeholder: (context, url) {
+          debugPrint('UserAvatar: Showing placeholder for: $url');
+          return _buildInitialsAvatar(initials, context);
+        },
         errorWidget: (context, url, error) {
-          debugPrint('Error loading profile image: $error');
+          debugPrint('UserAvatar: Error loading profile image: $error for URL: $url');
           // Clear the cache for this URL to prevent future errors
           _clearImageCache(url);
           return _buildInitialsAvatar(initials, context);
@@ -129,9 +141,9 @@ class UserAvatar extends StatelessWidget {
   void _clearImageCache(String url) {
     try {
       CachedNetworkImage.evictFromCache(url);
-      debugPrint('Cleared cache for image: $url');
+      debugPrint('UserAvatar: Cleared cache for image: $url');
     } catch (e) {
-      debugPrint('Error clearing image cache: $e');
+      debugPrint('UserAvatar: Error clearing image cache: $e');
     }
   }
   
@@ -160,32 +172,45 @@ class UserAvatar extends StatelessWidget {
     String? displayName;
     
     // Try to get a name from various sources
-    if (user?.name != null) {
+    if (user?.name != null && user!.name!.isNotEmpty) {
       displayName = user!.name;
-    } else if (authUser?.displayName != null) {
+      debugPrint('UserAvatar: Using user.name: $displayName');
+    } else if (authUser?.displayName != null && (authUser?.displayName as String).isNotEmpty) {
       displayName = authUser!.displayName as String;
-    } else if (user?.email != null) {
+      debugPrint('UserAvatar: Using authUser.displayName: $displayName');
+    } else if (user?.email != null && user!.email!.isNotEmpty) {
       displayName = user!.email;
-    } else if (authUser?.email != null) {
+      debugPrint('UserAvatar: Using user.email: $displayName');
+    } else if (authUser?.email != null && (authUser?.email as String).isNotEmpty) {
       displayName = authUser!.email as String;
+      debugPrint('UserAvatar: Using authUser.email: $displayName');
+    } else {
+      debugPrint('UserAvatar: No name or email found');
     }
     
     // If no name is found, return a question mark
     if (displayName == null || displayName.isEmpty) {
+      debugPrint('UserAvatar: No display name, returning ?');
       return '?';
     }
     
     // If email is used, get the part before @
     if (displayName.contains('@')) {
       displayName = displayName.split('@').first;
+      debugPrint('UserAvatar: Extracted name from email: $displayName');
     }
     
     final nameParts = displayName.trim().split(' ');
     if (nameParts.length > 1) {
-      return '${nameParts.first[0]}${nameParts.last[0]}'.toUpperCase();
+      final initials = '${nameParts.first[0]}${nameParts.last[0]}'.toUpperCase();
+      debugPrint('UserAvatar: Generated initials from full name: $initials');
+      return initials;
     } else if (nameParts.isNotEmpty && nameParts.first.isNotEmpty) {
-      return nameParts.first[0].toUpperCase();
+      final initial = nameParts.first[0].toUpperCase();
+      debugPrint('UserAvatar: Generated initial from single name: $initial');
+      return initial;
     } else {
+      debugPrint('UserAvatar: No valid name parts, returning ?');
       return '?';
     }
   }
