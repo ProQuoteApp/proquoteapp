@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'app_theme.dart';
 
 /// Initializes the shadcn_ui theme with the app's color scheme
 class ShadcnTheme {
   /// Get the shadcn_ui theme builder for Material
   static ThemeData Function(BuildContext, ThemeData) getMaterialThemeBuilder() {
     return (context, theme) {
+      // Get the current shadcn theme
+      final shadTheme = ShadTheme.of(context);
+      
       return theme.copyWith(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppTheme.primaryColor,
-          primary: AppTheme.primaryColor,
-          secondary: AppTheme.secondaryColor,
-          background: AppTheme.backgroundColor,
-          surface: AppTheme.surfaceColor,
-          error: AppTheme.errorColor,
+        // Use the shadcn theme colors instead of AppTheme colors
+        colorScheme: ColorScheme(
+          brightness: shadTheme.brightness,
+          primary: shadTheme.colorScheme.primary,
+          onPrimary: shadTheme.colorScheme.primaryForeground,
+          secondary: shadTheme.colorScheme.secondary,
+          onSecondary: shadTheme.colorScheme.secondaryForeground,
+          error: shadTheme.colorScheme.destructive,
+          onError: shadTheme.colorScheme.destructiveForeground,
+          surface: shadTheme.colorScheme.card,
+          onSurface: shadTheme.colorScheme.cardForeground,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
+            backgroundColor: shadTheme.colorScheme.primary,
+            foregroundColor: shadTheme.colorScheme.primaryForeground,
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -28,9 +34,9 @@ class ShadcnTheme {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.primaryColor,
+            foregroundColor: shadTheme.colorScheme.primary,
             minimumSize: const Size(double.infinity, 50),
-            side: BorderSide(color: AppTheme.primaryColor),
+            side: BorderSide(color: shadTheme.colorScheme.primary),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -38,12 +44,12 @@ class ShadcnTheme {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: AppTheme.primaryColor,
+            foregroundColor: shadTheme.colorScheme.primary,
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: shadTheme.colorScheme.card,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none,
@@ -54,11 +60,11 @@ class ShadcnTheme {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppTheme.primaryColor),
+            borderSide: BorderSide(color: shadTheme.colorScheme.primary),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: AppTheme.errorColor),
+            borderSide: BorderSide(color: shadTheme.colorScheme.destructive),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),

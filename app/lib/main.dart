@@ -56,6 +56,15 @@ class MyApp extends StatelessWidget {
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
           return ShadApp.custom(
+            theme: ShadThemeData(
+              brightness: Brightness.light,
+              colorScheme: const ShadBlueColorScheme.light(),
+            ),
+            darkTheme: ShadThemeData(
+              brightness: Brightness.dark,
+              colorScheme: const ShadBlueColorScheme.dark(),
+            ),
+            themeMode: ThemeMode.light, // Force dark theme
             appBuilder: (context, theme) => MaterialApp.router(
               title: 'ProQuote',
               theme: theme,
@@ -153,7 +162,10 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.background,
       body: child,
       bottomNavigationBar: const AppBottomNavigationBar(),
     );
@@ -174,6 +186,7 @@ class AppBottomNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     // Get the current route to determine which tab should be active
     final location = GoRouterState.of(context).matchedLocation;
+    final theme = ShadTheme.of(context);
     
     // Find the index of the current route in the bottom nav items
     int currentIndex = 0;
@@ -185,22 +198,31 @@ class AppBottomNavigationBar extends StatelessWidget {
       }
     }
     
-    return BottomNavigationBar(
-      currentIndex: currentIndex,
-      type: BottomNavigationBarType.fixed,
-      items: _items
-          .map(
-            (item) => BottomNavigationBarItem(
-              icon: Icon(item.$1),
-              label: item.$2,
-            ),
-          )
-          .toList(),
-      onTap: (index) {
-        if (currentIndex != index) {
-          context.go(_items[index].$3);
-        }
-      },
+    return Theme(
+      data: Theme.of(context).copyWith(
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: theme.colorScheme.background,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor: theme.colorScheme.mutedForeground,
+        ),
+      ),
+      child: BottomNavigationBar(
+        currentIndex: currentIndex,
+        type: BottomNavigationBarType.fixed,
+        items: _items
+            .map(
+              (item) => BottomNavigationBarItem(
+                icon: Icon(item.$1),
+                label: item.$2,
+              ),
+            )
+            .toList(),
+        onTap: (index) {
+          if (currentIndex != index) {
+            context.go(_items[index].$3);
+          }
+        },
+      ),
     );
   }
 }
