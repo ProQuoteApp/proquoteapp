@@ -15,9 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
       with:
+        ref: main  # Explicitly checkout the main branch
         fetch-depth: 0  # Fetch all history for proper versioning
+    
+    - name: Debug repository contents
+      run: |
+        echo "Current directory contents:"
+        ls -la
+        echo "App directory contents:"
+        ls -la app
+        echo "App/lib directory contents:"
+        ls -la app/lib
+        echo "App/lib/theme directory contents:"
+        ls -la app/lib/theme
+        echo "App/lib/screens directory contents:"
+        ls -la app/lib/screens
+        echo "App/lib/widgets directory contents:"
+        ls -la app/lib/widgets
     
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
@@ -29,6 +46,8 @@ jobs:
       run: |
         cd app
         flutter pub get
+        # Print the dependencies to verify shadcn_ui is included
+        cat pubspec.lock | grep -A 5 shadcn_ui || echo "shadcn_ui not found in pubspec.lock"
     
     - name: Create mock Firebase configuration
       run: |
@@ -98,6 +117,8 @@ jobs:
         ls -la app/build/web/
         echo "Checking index.html content:"
         cat app/build/web/index.html | head -20
+        echo "Checking for shadcn_ui in main.dart.js:"
+        grep -o "shadcn_ui" app/build/web/main.dart.js || echo "shadcn_ui not found in main.dart.js"
     
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
