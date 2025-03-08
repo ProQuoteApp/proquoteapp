@@ -23,8 +23,7 @@ defaults:
     shell: bash
 
 jobs:
-  # Build job
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
@@ -72,7 +71,6 @@ jobs:
         cd app
         if [ -f "lib/firebase_options_template.dart" ]; then
           cp lib/firebase_options_template.dart lib/firebase_options.dart
-          # Replace placeholder values with mock values
           sed -i 's/WEB_API_KEY/mock-api-key/g' lib/firebase_options.dart
           sed -i 's/WEB_AUTH_DOMAIN/mock-project.firebaseapp.com/g' lib/firebase_options.dart
           sed -i 's/WEB_PROJECT_ID/mock-project/g' lib/firebase_options.dart
@@ -81,7 +79,7 @@ jobs:
           sed -i 's/WEB_APP_ID/1:123456789012:web:abcdef1234567890/g' lib/firebase_options.dart
           sed -i 's/WEB_MEASUREMENT_ID/G-ABCDEFGHIJ/g' lib/firebase_options.dart
           
-          # Also replace other platform values
+          # Platform values
           sed -i 's/ANDROID_API_KEY/mock-api-key/g' lib/firebase_options.dart
           sed -i 's/ANDROID_APP_ID/1:123456789012:android:abcdef1234567890/g' lib/firebase_options.dart
           sed -i 's/ANDROID_MESSAGING_SENDER_ID/123456789012/g' lib/firebase_options.dart
@@ -114,47 +112,22 @@ jobs:
           exit 1
         fi
     
-    - name: Add build timestamp for cache busting
+    - name: Add build timestamp
       run: |
         cd app
-        # Create a timestamp file that will be included in the build
         TIMESTAMP=$(date +%Y%m%d%H%M%S)
         echo "Build timestamp: $TIMESTAMP" > web/build_timestamp.txt
-        echo "Created timestamp file with value: $TIMESTAMP"
     
     - name: Build web
       run: |
         cd app
-        # Clean before building to ensure no cached artifacts
         flutter clean
         flutter build web --release --base-href /proquoteapp/
     
-    - name: List build output
-      run: |
-        echo "Listing build output files:"
-        ls -la app/build/web/
-        echo "Checking index.html content:"
-        cat app/build/web/index.html | head -20
-        echo "Checking for shadcn_ui in main.dart.js:"
-        grep -o "shadcn_ui" app/build/web/main.dart.js || echo "shadcn_ui not found in main.dart.js"
-    
-    - name: Setup Pages
-      id: pages
-      uses: actions/configure-pages@v3
-    
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v1
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        path: './app/build/web'
-    
-  # Deployment job
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./app/build/web
+        force_orphan: true
+        commit_message: "Deploy: ${{ github.event.head_commit.message }} [skip ci]"
