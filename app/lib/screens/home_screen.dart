@@ -10,6 +10,7 @@ import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -83,32 +84,12 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: AppConstants.sectionSpacing),
 
                 // Search bar
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search for services...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.cardBorderRadius),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
-                  ),
+                ShadInput(
+                  placeholder: const Text('Search for services...'),
+                  leading: const Icon(Icons.search),
+                  onChanged: (value) {
+                    // Handle search
+                  },
                 ),
                 const SizedBox(height: AppConstants.sectionSpacing),
 
@@ -147,48 +128,38 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 32),
 
                 // Your jobs - RESPONSIVE LAYOUT
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blue.shade100,
-                      width: 1,
-                    ),
+                ShadCard(
+                  title: Row(
+                    children: [
+                      Icon(
+                        Icons.work_outline,
+                        color: Theme.of(context).primaryColor,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Your Jobs',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Theme.of(context).primaryColor,
+                            ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: () {
+                          // Navigate to all jobs
+                          context.go('/jobs');
+                        },
+                        icon: const Icon(Icons.arrow_forward),
+                        label: const Text('View All'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.work_outline,
-                            color: Theme.of(context).primaryColor,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Your Jobs',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: Theme.of(context).primaryColor,
-                                ),
-                          ),
-                          const Spacer(),
-                          TextButton.icon(
-                            onPressed: () {
-                              // Navigate to all jobs
-                              context.go('/jobs');
-                            },
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('View All'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Theme.of(context).primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
                       if (MockData.jobs.isEmpty)
                         Center(
                           child: Padding(
@@ -268,16 +239,18 @@ class HomeScreen extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(top: 16),
                           child: Center(
-                            child: OutlinedButton.icon(
+                            child: ShadButton.outline(
                               onPressed: () {
                                 // Navigate to all jobs
                                 context.go('/jobs');
                               },
-                              icon: const Icon(Icons.list),
-                              label: const Text('View All Jobs'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Theme.of(context).primaryColor,
-                                side: BorderSide(color: Theme.of(context).primaryColor),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.list, size: 18),
+                                  const SizedBox(width: 8),
+                                  const Text('View All Jobs'),
+                                ],
                               ),
                             ),
                           ),
@@ -299,7 +272,7 @@ class HomeScreen extends StatelessWidget {
                               color: Colors.grey[700],
                             ),
                       ),
-                      TextButton(
+                      ShadButton.link(
                         onPressed: () {
                           // Navigate to all services
                           context.go('/providers');
@@ -325,7 +298,7 @@ class HomeScreen extends StatelessWidget {
                             : MockData.services.length,
                         itemBuilder: (context, index) {
                           final service = MockData.services[index];
-                          return ServiceCompactCard(
+                          return ServiceCard(
                             service: service,
                             onTap: () {
                               // Navigate to service providers for this service
@@ -345,7 +318,7 @@ class HomeScreen extends StatelessWidget {
                               padding: EdgeInsets.only(
                                 right: index < (MockData.services.length > 4 ? 3 : MockData.services.length - 1) ? 12 : 0,
                               ),
-                              child: ServiceCompactCard(
+                              child: ServiceCard(
                                 service: service,
                                 onTap: () {
                                   // Navigate to service providers for this service
@@ -361,13 +334,19 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: ShadButton(
         onPressed: () {
           // Navigate to create job
           context.go('/create-job');
         },
-        icon: const Icon(Icons.add),
-        label: const Text('New Job'),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add, size: 18),
+            const SizedBox(width: 8),
+            const Text('New Job'),
+          ],
+        ),
       ),
     );
   }
@@ -380,11 +359,11 @@ class HomeScreen extends StatelessWidget {
 }
 
 // Compact service card for horizontal scrolling
-class ServiceCompactCard extends StatelessWidget {
+class ServiceCard extends StatelessWidget {
   final Service service;
   final VoidCallback onTap;
 
-  const ServiceCompactCard({
+  const ServiceCard({
     super.key,
     required this.service,
     required this.onTap,
@@ -394,19 +373,8 @@ class ServiceCompactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 140,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
+      child: ShadCard(
+        padding: EdgeInsets.zero,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -459,18 +427,12 @@ class ServiceCompactCard extends StatelessWidget {
                   Positioned(
                     top: 8,
                     right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+                    child: ShadBadge(
                       child: Text(
                         service.category,
                         style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
                     ),
