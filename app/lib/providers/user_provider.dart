@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user.dart';
 import '../models/auth_user.dart';
+import '../models/user_profile.dart';
 import '../services/user_service.dart';
 
 /// Provider that manages user state
@@ -130,6 +131,30 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
   
+  /// Update user profile
+  Future<void> updateUserProfile(AuthUser authUser, UserProfile updatedProfile) async {
+    print('UserProvider: Updating user profile for ${authUser.uid}');
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    
+    try {
+      // Update the profile in Firestore
+      await _userService.updateUserProfile(authUser.uid, updatedProfile);
+      
+      // Reload the user data
+      await loadUser(authUser);
+      
+      print('UserProvider: User profile updated successfully');
+    } catch (e) {
+      print('UserProvider: Error updating user profile: $e');
+      _handleError(e);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Handle errors and set appropriate error messages
   void _handleError(dynamic e) {
     if (e is FirebaseException) {

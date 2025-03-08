@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_profile.dart';
 import '../utils/constants.dart';
+import '../utils/platform_helper.dart';
+import '../widgets/error_display.dart';
+import 'forgot_password_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     
     setState(() {
       _isPhoneAuth = !_isPhoneAuth;
+      _isVerificationSent = false;
       if (_isPhoneAuth) {
         _phoneController.clear();
         _smsCodeController.clear();
@@ -145,6 +150,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
     
     await _authProvider.verifyPhoneNumber(_phoneController.text.trim());
+    
+    // Set verification sent flag if successful
+    if (_authProvider.verificationId != null) {
+      setState(() {
+        _isVerificationSent = true;
+      });
+    }
   }
 
   Future<void> _verifyPhoneCode() async {
@@ -164,518 +176,461 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final isVerificationSent = _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null;
-    final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
+    // Get screen width to handle responsive layout
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLargeScreen = screenWidth > 900;
+    final isMediumScreen = screenWidth > 600 && screenWidth <= 900;
+    
+    // Calculate content width based on screen size
+    final contentWidth = isLargeScreen 
+        ? 900.0 
+        : isMediumScreen 
+            ? screenWidth * 0.9 
+            : screenWidth;
+    
+    // Listen to auth provider for state changes
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isLoading = authProvider.isLoading;
+    final error = authProvider.error;
     
     return Scaffold(
-      body: SafeArea(
-        child: Center(
+      body: Center(
+        child: SizedBox(
+          width: contentWidth,
           child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Padding(
-                padding: const EdgeInsets.all(AppConstants.screenPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+            padding: const EdgeInsets.all(AppConstants.screenPadding),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // App Logo and Title
+                Column(
                   children: [
-                    // App Logo and Title
-                    Column(
-                      children: [
-                        const SizedBox(height: AppConstants.sectionSpacing),
-                        Icon(
-                          Icons.handyman_rounded,
-                          size: 64,
-                          color: theme.primaryColor,
-                        ),
-                        const SizedBox(height: AppConstants.itemSpacing),
-                        Text(
-                          'ProQuote',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.primaryColor,
-                          ),
-                        ),
-                        const SizedBox(height: AppConstants.textSpacing),
-                        Text(
-                          'Connect with service providers',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: AppConstants.sectionSpacing),
-                      ],
+                    const SizedBox(height: AppConstants.sectionSpacing),
+                    Icon(
+                      Icons.handyman_rounded,
+                      size: 64,
+                      color: Theme.of(context).primaryColor,
                     ),
-                    
-                    // Error Message
-                    if (_authProvider.error != null)
-                      Container(
-                        padding: const EdgeInsets.all(12.0),
-                        margin: const EdgeInsets.only(bottom: 24.0),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _authProvider.error!,
-                                style: TextStyle(color: Colors.red.shade700),
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(height: AppConstants.itemSpacing),
+                    Text(
+                      'ProQuote',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
                       ),
-                    
-                    // Tab Bar for Sign In / Sign Up
-                    if (!_isPhoneAuth || !isVerificationSent)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(50),
-                        ),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicator: BoxDecoration(
-                            borderRadius: BorderRadius.circular(50),
-                            color: theme.primaryColor,
-                          ),
-                          labelColor: Colors.white,
-                          unselectedLabelColor: Colors.grey[700],
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          dividerColor: Colors.transparent,
-                          labelStyle: const TextStyle(
+                    ),
+                    const SizedBox(height: AppConstants.textSpacing),
+                    Text(
+                      'Connect with service providers',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: AppConstants.sectionSpacing),
+                  ],
+                ),
+                
+                // Error Message
+                if (error != null)
+                  ErrorDisplay(
+                    message: error,
+                    type: ErrorType.error,
+                    isDismissible: true,
+                    onDismiss: () {
+                      authProvider.clearError();
+                    },
+                    actionButton: error.contains('network') ? 
+                      TextButton(
+                        onPressed: () {
+                          // Retry the last operation
+                          if (_isPhoneAuth && authProvider.isPhoneVerificationInProgress) {
+                            _verifyPhoneCode();
+                          } else if (_isPhoneAuth) {
+                            _verifyPhoneNumber();
+                          } else {
+                            _submitForm();
+                          }
+                        },
+                        child: const Text('Retry'),
+                      ) : null,
+                  ),
+                
+                // Tab Bar for Sign In / Sign Up
+                if (!_isPhoneAuth || !_authProvider.isPhoneVerificationInProgress)
+                  ShadTabs<int>(
+                    value: _tabController.index,
+                    onChanged: (index) {
+                      setState(() {
+                        _tabController.index = index;
+                      });
+                    },
+                    tabs: [
+                      ShadTab(
+                        value: 0,
+                        child: const Text('Sign In'),
+                      ),
+                      ShadTab(
+                        value: 1,
+                        child: const Text('Sign Up'),
+                      ),
+                    ],
+                  ),
+                
+                const SizedBox(height: 32),
+                
+                // Form
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      if (_isPhoneAuth)
+                        Text(
+                          _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? 'Verify Phone' : 'Phone Authentication',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
-                          tabs: const [
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Text('Sign In'),
+                        ),
+                      
+                      if (_isPhoneAuth)
+                        const SizedBox(height: 16),
+                      
+                      // Name Field (Sign Up only)
+                      if (_tabController.index == 1 && !_isPhoneAuth)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            
+                            const SizedBox(height: 8),
+                            ShadInputFormField(
+                              controller: _nameController,
+                              label: const Text('Full Name'),
+                              placeholder: const Text('Enter your full name'),
+                              validator: (value) {
+                                if (_tabController.index == 1 && (value == null || value.isEmpty)) {
+                                  return 'Please enter your name';
+                                }
+                                return null;
+                              },
                             ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              child: Text('Sign Up'),
-                            ),
+                            const SizedBox(height: 24),
                           ],
-                          onTap: (_) {
-                            // Force rebuild to update form validation
-                            setState(() {});
+                        ),
+                      
+                      // Email & Password Fields
+                      if (!_isPhoneAuth) ...[
+                        
+                        const SizedBox(height: 8),
+                        ShadInputFormField(
+                          controller: _emailController,
+                          label: const Text('Email'),
+                          placeholder: const Text('Enter your email'),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your email';
+                            }
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                              return 'Please enter a valid email';
+                            }
+                            return null;
                           },
                         ),
-                      ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Form
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          if (_isPhoneAuth)
-                            Text(
-                              isVerificationSent ? 'Verify Phone' : 'Phone Authentication',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        
+                        const SizedBox(height: 8),
+                        ShadInputFormField(
+                          controller: _passwordController,
+                          label: const Text('Password'),
+                          placeholder: Text(_tabController.index == 0 
+                              ? 'Enter your password' 
+                              : 'Create a password'),
+                          obscureText: _obscurePassword,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            if (_tabController.index == 1 && value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
+                            return null;
+                          },
+                          trailing: IconButton(
+                            icon: Icon(
+                              _obscurePassword 
+                                  ? Icons.visibility_outlined 
+                                  : Icons.visibility_off_outlined,
                             ),
-                          
-                          if (_isPhoneAuth)
-                            const SizedBox(height: 16),
-                          
-                          // Name Field (Sign Up only)
-                          if (_tabController.index == 1 && !_isPhoneAuth)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Full Name',
-                                  style: theme.textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _nameController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter your full name',
-                                    prefixIcon: const Icon(Icons.person_outline),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (_tabController.index == 1 && (value == null || value.isEmpty)) {
-                                      return 'Please enter your name';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                              ],
-                            ),
-                          
-                          // Email & Password Fields
-                          if (!_isPhoneAuth) ...[
-                            Text(
-                              'Email',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                hintText: 'Enter your email',
-                                prefixIcon: const Icon(Icons.email_outlined),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 24),
-                            
-                            Text(
-                              'Password',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _passwordController,
-                              decoration: InputDecoration(
-                                hintText: _tabController.index == 0 
-                                    ? 'Enter your password' 
-                                    : 'Create a password',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword 
-                                        ? Icons.visibility_outlined 
-                                        : Icons.visibility_off_outlined,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _obscurePassword = !_obscurePassword;
-                                    });
-                                  },
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                              obscureText: _obscurePassword,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                if (_tabController.index == 1 && value.length < 6) {
-                                  return 'Password must be at least 6 characters';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            if (_tabController.index == 0) // Sign In
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {
-                                    // Forgot password functionality
-                                  },
-                                  child: Text(
-                                    'Forgot Password?',
-                                    style: TextStyle(
-                                      color: theme.primaryColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ]
-                          // Phone Authentication
-                          else if (!isVerificationSent) ...[
-                            Text(
-                              'Phone Number',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _phoneController,
-                              decoration: InputDecoration(
-                                hintText: '+27 82 123 4567',
-                                prefixIcon: const Icon(Icons.phone_outlined),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                              keyboardType: TextInputType.phone,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your phone number';
-                                }
-                                return null;
-                              },
-                            ),
-                          ]
-                          // Verification Code
-                          else ...[
-                            Text(
-                              'Verification Code',
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _smsCodeController,
-                              decoration: InputDecoration(
-                                hintText: '123456',
-                                prefixIcon: const Icon(Icons.sms_outlined),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter the verification code';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                        
+                        if (_tabController.index == 0) // Sign In
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
                               onPressed: () {
-                                // Resend code
-                                _verifyPhoneNumber();
+                                GoRouter.of(context).push('/forgot-password');
                               },
-                              icon: const Icon(Icons.refresh, size: 16),
-                              label: const Text('Resend Code'),
+                              child: Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ]
+                      // Phone Authentication
+                      else if (!(_authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null)) ...[
+                        Text(
+                          'Phone Number',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ShadInputFormField(
+                          controller: _phoneController,
+                          label: const Text('Phone Number'),
+                          placeholder: const Text('+27 82 123 4567'),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your phone number';
+                            }
+                            return null;
+                          },
+                        ),
+                        if (_isVerificationSent) ...[
+                          const SizedBox(height: 8),
+                          ShadAlert(
+                            title: const Text('Verification code sent!'),
+                            description: const Text('Please check your phone.'),
+                          ),
+                        ],
+                      ]
+                      // Verification Code
+                      else ...[
+                        
+                        const SizedBox(height: 8),
+                        ShadInputFormField(
+                          controller: _smsCodeController,
+                          label: const Text('Verification Code'),
+                          placeholder: const Text('123456'),
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter the verification code';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () {
+                            // Resend code
+                            _verifyPhoneNumber();
+                          },
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Resend Code'),
+                        ),
+                      ],
+                      
+                      // User Type Selection (Sign Up only)
+                      if (_tabController.index == 1 && !_isPhoneAuth) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          'I am a:',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<UserType>(
+                                title: const Text('Customer'),
+                                value: UserType.seeker,
+                                groupValue: _userType,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _userType = value;
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: RadioListTile<UserType>(
+                                title: const Text('Provider'),
+                                value: UserType.provider,
+                                groupValue: _userType,
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _userType = value;
+                                    });
+                                  }
+                                },
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                              ),
                             ),
                           ],
-                          
-                          // User Type Selection (Sign Up only)
-                          if (_tabController.index == 1 && !_isPhoneAuth) ...[
-                            const SizedBox(height: 24),
-                            Text(
-                              'I am a:',
-                              style: theme.textTheme.titleSmall?.copyWith(
+                        ),
+                      ],
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Submit Button
+                      ShadButton(
+                        onPressed: isLoading
+                            ? null
+                            : (_isPhoneAuth
+                                ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? _verifyPhoneCode : _verifyPhoneNumber)
+                                : _submitForm),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                _isPhoneAuth
+                                    ? ( _authProvider.isPhoneVerificationInProgress && _authProvider.verificationId != null ? 'Verify Code' : 'Send Verification Code')
+                                    : (_tabController.index == 0 ? 'Sign In' : 'Sign Up'),
+                              ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // OR Divider
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey[400],
+                              thickness: 1,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: TextStyle(
+                                color: Colors.grey[600],
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<UserType>(
-                                    title: const Text('Customer'),
-                                    value: UserType.seeker,
-                                    groupValue: _userType,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _userType = value!;
-                                      });
-                                    },
-                                    contentPadding: EdgeInsets.zero,
-                                    dense: true,
-                                  ),
-                                ),
-                                Expanded(
-                                  child: RadioListTile<UserType>(
-                                    title: const Text('Provider'),
-                                    value: UserType.provider,
-                                    groupValue: _userType,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _userType = value!;
-                                      });
-                                    },
-                                    contentPadding: EdgeInsets.zero,
-                                    dense: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          
-                          const SizedBox(height: 32),
-                          
-                          // Submit Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: _authProvider.isLoading
-                                  ? null
-                                  : (_isPhoneAuth
-                                      ? (isVerificationSent ? _verifyPhoneCode : _verifyPhoneNumber)
-                                      : _submitForm),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.primaryColor,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                              child: _authProvider.isLoading
-                                  ? const SizedBox(
-                                      height: 24,
-                                      width: 24,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Text(
-                                      _isPhoneAuth
-                                          ? (isVerificationSent ? 'Verify Code' : 'Send Verification Code')
-                                          : (_tabController.index == 0 ? 'Sign In' : 'Sign Up'),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                            ),
                           ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // OR Divider
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.grey[400],
-                                  thickness: 1,
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'OR',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Divider(
-                                  color: Colors.grey[400],
-                                  thickness: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Social Sign In Buttons
-                          Row(
-                            children: [
-                              // Google Button
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: _authProvider.isLoading ? null : _handleGoogleSignIn,
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.grey.shade300),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Container(
-                                        height: 18,
-                                        width: 18,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'G',
-                                            style: TextStyle(
-                                              color: Colors.red[700],
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text('Google'),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              // Phone Button
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _authProvider.isLoading ? null : _togglePhoneAuth,
-                                  icon: const Icon(Icons.phone, size: 20),
-                                  label: Text(_isPhoneAuth ? 'Email' : 'Phone'),
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(color: Colors.grey.shade300),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey[400],
+                              thickness: 1,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Social Sign In Buttons
+                      Row(
+                        children: [
+                          // Google Button - Only show if supported on this platform
+                          if (PlatformHelper.isFeatureSupported('supportsGoogleSignIn'))
+                            Expanded(
+                              child: ShadButton.outline(
+                                onPressed: isLoading ? null : _handleGoogleSignIn,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      height: 18,
+                                      width: 18,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'G',
+                                          style: TextStyle(
+                                            color: Colors.red[700],
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text('Google'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (PlatformHelper.isFeatureSupported('supportsGoogleSignIn') && 
+                              PlatformHelper.isFeatureSupported('supportsPhoneAuth'))
+                            const SizedBox(width: 16),
+                          // Phone Button - Only show if supported on this platform
+                          if (PlatformHelper.isFeatureSupported('supportsPhoneAuth'))
+                            Expanded(
+                              child: ShadButton.outline(
+                                onPressed: isLoading ? null : _togglePhoneAuth,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.phone, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(_isPhoneAuth ? 'Email' : 'Phone'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          // Apple Button - Only show on iOS
+                          if (PlatformHelper.isFeatureSupported('supportsAppleSignIn'))
+                            Expanded(
+                              child: ShadButton.outline(
+                                onPressed: isLoading ? null : () {
+                                  // TODO: Implement Apple Sign In
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Apple Sign In not implemented yet'),
+                                    ),
+                                  );
+                                },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.apple, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text('Apple'),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

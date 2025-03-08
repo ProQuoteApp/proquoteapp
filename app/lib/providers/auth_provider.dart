@@ -16,6 +16,8 @@ class AuthProvider extends ChangeNotifier {
   
   // Phone verification state
   String? _verificationId;
+  // The resendToken can be used to resend the verification code without
+  // triggering the reCAPTCHA flow again on Android devices
   int? _resendToken;
   bool _isPhoneVerificationInProgress = false;
 
@@ -61,7 +63,7 @@ class AuthProvider extends ChangeNotifier {
   /// Whether authentication is in progress
   bool get isLoading => _isLoading;
 
-  /// Error message if authentication failed
+  /// Current error message
   String? get error => _error;
 
   /// Whether the user is authenticated
@@ -72,6 +74,9 @@ class AuthProvider extends ChangeNotifier {
   
   /// Verification ID for phone authentication
   String? get verificationId => _verificationId;
+  
+  /// Resend token for phone verification
+  int? get resendToken => _resendToken;
 
   /// Sign up with email and password
   Future<void> signUpWithEmailAndPassword({
@@ -294,8 +299,86 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Reset error
-  void resetError() {
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService!.sendPasswordResetEmail(email: email);
+    } on AuthException catch (e) {
+      _error = e.message;
+    } catch (e) {
+      _error = 'Failed to send password reset email: ${e.toString()}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Confirm password reset with code and new password
+  Future<void> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _authService!.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
+    } on AuthException catch (e) {
+      _error = e.message;
+    } catch (e) {
+      _error = 'Failed to reset password: ${e.toString()}';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Verify password reset code
+  Future<bool> verifyPasswordResetCode(String code) async {
+    if (_authService == null) {
+      _error = 'Authentication service not initialized';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final isValid = await _authService!.verifyPasswordResetCode(code);
+      return isValid;
+    } catch (e) {
+      _error = 'Failed to verify reset code: ${e.toString()}';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Clear any error message
+  void clearError() {
     _error = null;
     notifyListeners();
   }

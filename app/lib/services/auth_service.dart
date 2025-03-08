@@ -4,7 +4,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import '../models/auth_user.dart';
 import '../models/user_profile.dart';
-import '../models/user.dart' as app_user;
 
 /// Exception thrown during the authentication process
 class AuthException implements Exception {
@@ -173,7 +172,7 @@ class AuthService {
     } catch (e) {
       print('Unexpected error during Google Sign-In: $e');
       if (e is AuthException) {
-        throw e;
+        rethrow;
       }
       throw AuthException('Google Sign-In failed: ${e.toString()}');
     }
@@ -284,6 +283,44 @@ class AuthService {
       }
     } catch (e) {
       throw AuthException('Sign out failed: ${e.toString()}');
+    }
+  }
+
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Failed to send password reset email: ${e.toString()}');
+    }
+  }
+  
+  /// Verify password reset code and set new password
+  Future<void> confirmPasswordReset({
+    required String code, 
+    required String newPassword
+  }) async {
+    try {
+      await _firebaseAuth.confirmPasswordReset(
+        code: code,
+        newPassword: newPassword,
+      );
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      throw _handleFirebaseAuthException(e);
+    } catch (e) {
+      throw AuthException('Failed to reset password: ${e.toString()}');
+    }
+  }
+  
+  /// Check if password reset code is valid
+  Future<bool> verifyPasswordResetCode(String code) async {
+    try {
+      await _firebaseAuth.verifyPasswordResetCode(code);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
