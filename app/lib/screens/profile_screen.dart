@@ -3,11 +3,13 @@ import 'package:proquote/models/user.dart';
 import 'package:provider/provider.dart';
 import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
+import 'package:proquote/providers/theme_provider.dart';
 import 'package:proquote/models/user_profile.dart';
 import 'package:proquote/utils/constants.dart';
 import 'package:proquote/widgets/user_avatar.dart';
 import 'package:proquote/widgets/error_display.dart';
 import 'package:proquote/widgets/address_autocomplete.dart';
+import 'package:proquote/widgets/app_header.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -35,13 +37,13 @@ class ProfileScreen extends StatelessWidget {
             : screenWidth;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
+      appBar: AppHeader(
+        title: 'Profile',
         centerTitle: isLargeScreen,
-        actions: [
+        additionalActions: [
           // Add a button to clear image cache
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Clear image cache',
             onPressed: () {
               // Clear the image cache
@@ -50,15 +52,21 @@ class ProfileScreen extends StatelessWidget {
               // Show a snackbar to confirm
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Image cache cleared. Restart the app to see changes.'),
-                  duration: Duration(seconds: 3),
+                  content: Text('Image cache cleared'),
+                  duration: Duration(seconds: 2),
                 ),
               );
+              
+              // Refresh the user data
+              if (authUser != null) {
+                userProvider.loadUser(authUser);
+              }
             },
           ),
           if (user != null && firestoreAvailable)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Profile',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -74,7 +82,8 @@ class ProfileScreen extends StatelessWidget {
               },
             ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_outlined),
+            tooltip: 'Logout',
             onPressed: () async {
               await authProvider.signOut();
             },
@@ -219,12 +228,18 @@ class ProfileScreen extends StatelessWidget {
                                 // TODO: Implement notification toggle
                               } : null,
                             ),
-                            SwitchListTile(
-                              title: const Text('Dark Mode'),
-                              subtitle: const Text('Use dark theme'),
-                              value: false, // TODO: Implement theme toggle
-                              onChanged: (value) {
-                                // TODO: Implement theme toggle
+                            Consumer<ThemeProvider>(
+                              builder: (context, themeProvider, _) {
+                                return SwitchListTile(
+                                  title: const Text('Dark Mode'),
+                                  subtitle: const Text('Use dark theme'),
+                                  value: themeProvider.isDarkMode,
+                                  onChanged: (value) {
+                                    themeProvider.setThemeMode(
+                                      value ? ThemeMode.dark : ThemeMode.light
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ],
@@ -455,10 +470,11 @@ class EditProfileScreenState extends State<EditProfileScreen> {
             : screenWidth;
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
+      appBar: AppHeader(
+        title: 'Edit Profile',
         centerTitle: isLargeScreen,
-        actions: [
+        showBackButton: true,
+        additionalActions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading
@@ -472,7 +488,10 @@ class EditProfileScreenState extends State<EditProfileScreen> {
                   )
                 : const Text(
                     'Save',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ],

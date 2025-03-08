@@ -269,126 +269,120 @@ class JobService {
     }
   }
   
-  /// Get all jobs for a user
-  Future<List<Job>> getUserJobs(String userId) async {
-    // Check cache first
+  /// Get jobs for a user
+  Future<List<Job>?> getUserJobs(
+    String userId, {
+    int limit = 10,
+    String? startAfterId,
+  }) async {
+    // Check cache first if not paginating
     final cacheKey = userId;
-    if (_userJobsCache.containsKey(cacheKey) && 
+    if (startAfterId == null && 
+        _userJobsCache.containsKey(cacheKey) && 
         _userJobsCacheTimestamps.containsKey(cacheKey) && 
         !_isCacheExpired(_userJobsCacheTimestamps[cacheKey]!)) {
       print('Using cached user jobs for: $userId');
-      return _userJobsCache[cacheKey]!;
+      return _userJobsCache[cacheKey];
     }
     
     try {
-      print('Fetching user jobs from Firestore for: $userId');
+      print('Fetching user jobs from Firestore: $userId');
       
-      // Try to get from cache first, then network if needed
-      QuerySnapshot? querySnapshot;
-      bool fromCache = false;
+      // Create query
+      Query query = _jobsCollection
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
       
-      try {
-        querySnapshot = await _jobsCollection
-            .where('userId', isEqualTo: userId)
-            .orderBy('createdAt', descending: true)
-            .get(const GetOptions(source: Source.cache));
-        print('Got user jobs from cache for: $userId');
-        fromCache = true;
-        
-        // If we got an empty result from cache, try server
-        if (querySnapshot.docs.isEmpty) {
-          print('Empty result from cache, trying server for: $userId');
-          querySnapshot = await _jobsCollection
-              .where('userId', isEqualTo: userId)
-              .orderBy('createdAt', descending: true)
-              .get(const GetOptions(source: Source.server));
-          fromCache = false;
+      // Add pagination if needed
+      if (startAfterId != null) {
+        // Get the last document
+        final lastDoc = await _jobsCollection.doc(startAfterId).get();
+        if (lastDoc.exists) {
+          query = query.startAfterDocument(lastDoc);
         }
-      } catch (e) {
-        print('Cache miss for user jobs: $userId, fetching from server');
-        querySnapshot = await _jobsCollection
-            .where('userId', isEqualTo: userId)
-            .orderBy('createdAt', descending: true)
-            .get(const GetOptions(source: Source.server));
-        fromCache = false;
       }
       
-      final jobs = querySnapshot.docs
+      // Execute query
+      final snapshot = await query.get();
+      
+      // Convert to jobs
+      final jobs = snapshot.docs
           .map((doc) => Job.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
       
-      print('Found ${jobs.length} jobs for user: $userId (from ${fromCache ? "cache" : "server"})');
-      
-      // Update cache
-      _userJobsCache[cacheKey] = jobs;
-      _userJobsCacheTimestamps[cacheKey] = DateTime.now();
-      
-      // Also update individual job cache
-      for (final job in jobs) {
-        _jobCache[job.id] = job;
-        _jobCacheTimestamps[job.id] = DateTime.now();
+      // Only update cache for first page
+      if (startAfterId == null) {
+        _userJobsCache[cacheKey] = jobs;
+        _userJobsCacheTimestamps[cacheKey] = DateTime.now();
       }
       
       return jobs;
     } catch (e) {
       print('Error getting user jobs: $e');
-      return [];
+      return null;
     }
   }
   
-  /// Get all open jobs (for service providers)
-  Future<List<Job>> getOpenJobs({String? category}) async {
-    // Check cache first
+  /// Get open jobs (for service providers)
+  Future<List<Job>?> getOpenJobs({
+    String? category,
+    int limit = 10,
+    String? startAfterId,
+  }) async {
+    // Check cache first if not paginating
     final cacheKey = category ?? 'all';
-    if (_openJobsCache.containsKey(cacheKey) && 
+    if (startAfterId == null && 
+        _openJobsCache.containsKey(cacheKey) && 
         _openJobsCacheTimestamps.containsKey(cacheKey) && 
         !_isCacheExpired(_openJobsCacheTimestamps[cacheKey]!)) {
       print('Using cached open jobs for category: $cacheKey');
-      return _openJobsCache[cacheKey]!;
+      return _openJobsCache[cacheKey];
     }
     
     try {
       print('Fetching open jobs from Firestore for category: $cacheKey');
       
-      Query query = _jobsCollection.where('status', isEqualTo: 'open');
+      // Create query
+      Query query = _jobsCollection
+          .where('status', isEqualTo: 'open')
+          .orderBy('createdAt', descending: true);
       
-      // Add category filter if provided
-      if (category != null) {
+      // Add category filter if specified
+      if (category != null && category.isNotEmpty) {
         query = query.where('category', isEqualTo: category);
       }
       
-      // Try to get from cache first, then network if needed
-      QuerySnapshot? querySnapshot;
-      try {
-        querySnapshot = await query
-            .orderBy('createdAt', descending: true)
-            .get(const GetOptions(source: Source.cache));
-        print('Got open jobs from cache for category: $cacheKey');
-      } catch (e) {
-        print('Cache miss for open jobs: $cacheKey, fetching from server');
-        querySnapshot = await query
-            .orderBy('createdAt', descending: true)
-            .get(const GetOptions(source: Source.server));
+      // Add limit
+      query = query.limit(limit);
+      
+      // Add pagination if needed
+      if (startAfterId != null) {
+        // Get the last document
+        final lastDoc = await _jobsCollection.doc(startAfterId).get();
+        if (lastDoc.exists) {
+          query = query.startAfterDocument(lastDoc);
+        }
       }
       
-      final jobs = querySnapshot.docs
+      // Execute query
+      final snapshot = await query.get();
+      
+      // Convert to jobs
+      final jobs = snapshot.docs
           .map((doc) => Job.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
       
-      // Update cache
-      _openJobsCache[cacheKey] = jobs;
-      _openJobsCacheTimestamps[cacheKey] = DateTime.now();
-      
-      // Also update individual job cache
-      for (final job in jobs) {
-        _jobCache[job.id] = job;
-        _jobCacheTimestamps[job.id] = DateTime.now();
+      // Only update cache for first page
+      if (startAfterId == null) {
+        _openJobsCache[cacheKey] = jobs;
+        _openJobsCacheTimestamps[cacheKey] = DateTime.now();
       }
       
       return jobs;
     } catch (e) {
       print('Error getting open jobs: $e');
-      return [];
+      return null;
     }
   }
   

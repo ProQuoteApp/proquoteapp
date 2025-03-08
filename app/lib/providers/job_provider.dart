@@ -11,12 +11,18 @@ class JobProvider extends ChangeNotifier {
   List<Job>? _openJobs;
   Job? _currentJob;
   bool _isLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
   
   // Track if data is from cache
   bool _isUserJobsFromCache = false;
   bool _isOpenJobsFromCache = false;
   bool _isCurrentJobFromCache = false;
+  
+  // Pagination parameters
+  static const int _pageSize = 10;
+  String? _lastDocumentId;
+  bool _hasMoreJobs = true;
 
   /// Constructor
   JobProvider({
@@ -34,6 +40,9 @@ class JobProvider extends ChangeNotifier {
 
   /// Whether data is being loaded
   bool get isLoading => _isLoading;
+  
+  /// Whether more data is being loaded
+  bool get isLoadingMore => _isLoadingMore;
 
   /// Error message if any
   String? get error => _error;
@@ -46,26 +55,40 @@ class JobProvider extends ChangeNotifier {
   
   /// Whether current job is from cache
   bool get isCurrentJobFromCache => _isCurrentJobFromCache;
+  
+  /// Whether there are more jobs to load
+  bool get hasMoreJobs => _hasMoreJobs;
 
   /// Load jobs for a user
   Future<void> loadUserJobs(String userId) async {
     _isLoading = true;
     _error = null;
+    _lastDocumentId = null;
+    _hasMoreJobs = true;
     notifyListeners();
 
     try {
       // First attempt to load from cache
-      _userJobs = await _jobService.getUserJobs(userId);
+      _userJobs = await _jobService.getUserJobs(
+        userId, 
+        limit: _pageSize,
+      );
       
       // If no jobs were found, clear the cache and try again from server
       if (_userJobs == null || _userJobs!.isEmpty) {
         print('No jobs found in cache, forcing server fetch');
         _jobService.clearUserJobsCache(userId);
-        _userJobs = await _jobService.getUserJobs(userId);
+        _userJobs = await _jobService.getUserJobs(
+          userId,
+          limit: _pageSize,
+        );
         _isUserJobsFromCache = false;
       } else {
         _isUserJobsFromCache = true;
       }
+      
+      // Update pagination state
+      _updatePaginationState(_userJobs);
     } catch (e) {
       _error = 'Failed to load jobs: $e';
       print('JobProvider: Error loading user jobs: $e');
@@ -75,10 +98,45 @@ class JobProvider extends ChangeNotifier {
     }
   }
   
+  /// Load more user jobs (pagination)
+  Future<void> loadMoreUserJobs(String userId) async {
+    // Don't load more if we're already loading or there are no more jobs
+    if (_isLoadingMore || !_hasMoreJobs || _lastDocumentId == null) {
+      return;
+    }
+    
+    _isLoadingMore = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final moreJobs = await _jobService.getUserJobs(
+        userId,
+        limit: _pageSize,
+        startAfterId: _lastDocumentId,
+      );
+      
+      if (moreJobs != null && moreJobs.isNotEmpty) {
+        _userJobs = [...?_userJobs, ...moreJobs];
+        _updatePaginationState(moreJobs);
+      } else {
+        _hasMoreJobs = false;
+      }
+    } catch (e) {
+      _error = 'Failed to load more jobs: $e';
+      print('JobProvider: Error loading more user jobs: $e');
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+  
   /// Force refresh jobs for a user (bypass cache)
   Future<void> refreshUserJobs(String userId) async {
     _isLoading = true;
     _error = null;
+    _lastDocumentId = null;
+    _hasMoreJobs = true;
     notifyListeners();
 
     try {
@@ -86,8 +144,14 @@ class JobProvider extends ChangeNotifier {
       _jobService.clearUserJobsCache(userId);
       
       // Load fresh data
-      _userJobs = await _jobService.getUserJobs(userId);
+      _userJobs = await _jobService.getUserJobs(
+        userId,
+        limit: _pageSize,
+      );
       _isUserJobsFromCache = false; // Fresh data
+      
+      // Update pagination state
+      _updatePaginationState(_userJobs);
     } catch (e) {
       _error = 'Failed to refresh jobs: $e';
       print('JobProvider: Error refreshing user jobs: $e');
@@ -101,11 +165,19 @@ class JobProvider extends ChangeNotifier {
   Future<void> loadOpenJobs({String? category}) async {
     _isLoading = true;
     _error = null;
+    _lastDocumentId = null;
+    _hasMoreJobs = true;
     notifyListeners();
 
     try {
-      _openJobs = await _jobService.getOpenJobs(category: category);
+      _openJobs = await _jobService.getOpenJobs(
+        category: category,
+        limit: _pageSize,
+      );
       _isOpenJobsFromCache = true; // Assume from cache initially
+      
+      // Update pagination state
+      _updatePaginationState(_openJobs);
     } catch (e) {
       _error = 'Failed to load open jobs: $e';
       print('JobProvider: Error loading open jobs: $e');
@@ -115,10 +187,45 @@ class JobProvider extends ChangeNotifier {
     }
   }
   
+  /// Load more open jobs (pagination)
+  Future<void> loadMoreOpenJobs({String? category}) async {
+    // Don't load more if we're already loading or there are no more jobs
+    if (_isLoadingMore || !_hasMoreJobs || _lastDocumentId == null) {
+      return;
+    }
+    
+    _isLoadingMore = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final moreJobs = await _jobService.getOpenJobs(
+        category: category,
+        limit: _pageSize,
+        startAfterId: _lastDocumentId,
+      );
+      
+      if (moreJobs != null && moreJobs.isNotEmpty) {
+        _openJobs = [...?_openJobs, ...moreJobs];
+        _updatePaginationState(moreJobs);
+      } else {
+        _hasMoreJobs = false;
+      }
+    } catch (e) {
+      _error = 'Failed to load more open jobs: $e';
+      print('JobProvider: Error loading more open jobs: $e');
+    } finally {
+      _isLoadingMore = false;
+      notifyListeners();
+    }
+  }
+  
   /// Force refresh open jobs (bypass cache)
   Future<void> refreshOpenJobs({String? category}) async {
     _isLoading = true;
     _error = null;
+    _lastDocumentId = null;
+    _hasMoreJobs = true;
     notifyListeners();
 
     try {
@@ -127,14 +234,37 @@ class JobProvider extends ChangeNotifier {
       _jobService.clearCache(); // Clear all cache for simplicity
       
       // Load fresh data
-      _openJobs = await _jobService.getOpenJobs(category: category);
+      _openJobs = await _jobService.getOpenJobs(
+        category: category,
+        limit: _pageSize,
+      );
       _isOpenJobsFromCache = false; // Fresh data
+      
+      // Update pagination state
+      _updatePaginationState(_openJobs);
     } catch (e) {
       _error = 'Failed to refresh open jobs: $e';
       print('JobProvider: Error refreshing open jobs: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+  
+  /// Update pagination state based on loaded jobs
+  void _updatePaginationState(List<Job>? jobs) {
+    if (jobs == null || jobs.isEmpty) {
+      _hasMoreJobs = false;
+      return;
+    }
+    
+    // If we got fewer jobs than the page size, there are no more jobs
+    if (jobs.length < _pageSize) {
+      _hasMoreJobs = false;
+    } else {
+      _hasMoreJobs = true;
+      // Store the ID of the last document for pagination
+      _lastDocumentId = jobs.last.id;
     }
   }
 
@@ -193,8 +323,8 @@ class JobProvider extends ChangeNotifier {
     required String category,
     required String location,
     required DateTime preferredDate,
-    required List<String> images,
     required String userId,
+    List<String> images = const [],
   }) async {
     _isLoading = true;
     _error = null;
@@ -318,44 +448,30 @@ class JobProvider extends ChangeNotifier {
       final success = await _jobService.updateJobStatus(jobId, status);
       
       if (success) {
-        // Update the job in our lists
+        // Update job in cache
         if (_currentJob != null && _currentJob!.id == jobId) {
-          _currentJob = Job(
-            id: _currentJob!.id,
-            title: _currentJob!.title,
-            description: _currentJob!.description,
-            category: _currentJob!.category,
-            location: _currentJob!.location,
-            createdAt: _currentJob!.createdAt,
-            preferredDate: _currentJob!.preferredDate,
-            status: status,
-            images: _currentJob!.images,
-            userId: _currentJob!.userId,
-            quoteIds: _currentJob!.quoteIds,
-          );
+          _currentJob = _currentJob!.copyWith(status: status);
         }
         
+        // Update job in user jobs list
         if (_userJobs != null) {
           final index = _userJobs!.indexWhere((job) => job.id == jobId);
           if (index != -1) {
-            _userJobs![index] = Job(
-              id: _userJobs![index].id,
-              title: _userJobs![index].title,
-              description: _userJobs![index].description,
-              category: _userJobs![index].category,
-              location: _userJobs![index].location,
-              createdAt: _userJobs![index].createdAt,
-              preferredDate: _userJobs![index].preferredDate,
-              status: status,
-              images: _userJobs![index].images,
-              userId: _userJobs![index].userId,
-              quoteIds: _userJobs![index].quoteIds,
-            );
+            _userJobs![index] = _userJobs![index].copyWith(status: status);
           }
         }
         
-        if (_openJobs != null && status != 'open') {
-          _openJobs!.removeWhere((job) => job.id == jobId);
+        // Update job in open jobs list
+        if (_openJobs != null) {
+          final index = _openJobs!.indexWhere((job) => job.id == jobId);
+          if (index != -1) {
+            // If status is not 'open', remove from open jobs
+            if (status != 'open') {
+              _openJobs!.removeAt(index);
+            } else {
+              _openJobs![index] = _openJobs![index].copyWith(status: status);
+            }
+          }
         }
       } else {
         _error = 'Failed to update job status';
@@ -365,6 +481,49 @@ class JobProvider extends ChangeNotifier {
     } catch (e) {
       _error = 'Failed to update job status: $e';
       print('JobProvider: Error updating job status: $e');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  /// Update an existing job
+  Future<bool> updateJob(Job job) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      // First update the job status which is the only field we can update for now
+      final success = await _jobService.updateJobStatus(job.id, job.status);
+      
+      if (success) {
+        // Update the current job if it's the one being edited
+        if (_currentJob != null && _currentJob!.id == job.id) {
+          _currentJob = job;
+        }
+        
+        // Update the job in the user's jobs list
+        if (_userJobs != null) {
+          final index = _userJobs!.indexWhere((j) => j.id == job.id);
+          if (index != -1) {
+            _userJobs![index] = job;
+          }
+        }
+        
+        // Remove from open jobs if status is no longer open
+        if (_openJobs != null && job.status != 'open') {
+          _openJobs!.removeWhere((j) => j.id == job.id);
+        }
+      } else {
+        _error = 'Failed to update job';
+      }
+      
+      return success;
+    } catch (e) {
+      _error = 'Failed to update job: $e';
+      print('JobProvider: Error updating job: $e');
       return false;
     } finally {
       _isLoading = false;

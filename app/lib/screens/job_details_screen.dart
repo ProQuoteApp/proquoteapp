@@ -6,8 +6,12 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:proquote/models/job.dart';
 import 'package:proquote/models/quote.dart';
 import 'package:proquote/providers/quote_provider.dart';
+import 'package:proquote/providers/auth_provider.dart';
+import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/widgets/quote_card.dart';
+import 'package:proquote/widgets/app_header.dart';
 import 'package:proquote/utils/constants.dart';
+import 'package:go_router/go_router.dart';
 
 class JobDetailsScreen extends StatelessWidget {
   final Job job;
@@ -20,6 +24,13 @@ class JobDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
+    final userProvider = Provider.of<UserProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = userProvider.currentUser;
+    
+    // Check if the current user is the job creator
+    final bool isJobCreator = user?.id == job.userId;
+    final bool canEdit = isJobCreator && job.status == 'open';
     
     // Get screen width to handle responsive layout
     final screenWidth = MediaQuery.of(context).size.width;
@@ -34,18 +45,29 @@ class JobDetailsScreen extends StatelessWidget {
             : screenWidth;
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Job Details'),
+      appBar: AppHeader(
+        title: 'Job Details',
         centerTitle: isLargeScreen,
-        actions: [
+        showBackButton: true,
+        additionalActions: [
+          if (canEdit)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () {
+                // Navigate to edit job screen
+                context.go('/edit-job/${job.id}');
+              },
+              tooltip: 'Edit Job',
+            ),
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const Icon(Icons.share_outlined),
             onPressed: () {
               // Share job functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Share functionality coming soon')),
               );
             },
+            tooltip: 'Share',
           ),
         ],
       ),

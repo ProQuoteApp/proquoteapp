@@ -17,6 +17,7 @@ import 'package:proquote/providers/auth_provider.dart';
 import 'package:proquote/providers/user_provider.dart';
 import 'package:proquote/providers/job_provider.dart';
 import 'package:proquote/providers/quote_provider.dart';
+import 'package:proquote/providers/theme_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -50,6 +51,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProxyProvider<AuthProvider, UserProvider>(
           create: (_) => UserProvider(),
           update: (_, authProvider, previousUserProvider) {
@@ -82,8 +84,8 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => QuoteProvider()),
       ],
-      child: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
+      child: Consumer2<AuthProvider, ThemeProvider>(
+        builder: (context, authProvider, themeProvider, _) {
           return ShadApp.custom(
             theme: ShadThemeData(
               brightness: Brightness.light,
@@ -93,7 +95,7 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.dark,
               colorScheme: const ShadBlueColorScheme.dark(),
             ),
-            themeMode: ThemeMode.light, // Force dark theme
+            themeMode: themeProvider.themeMode,
             appBuilder: (context, theme) => MaterialApp.router(
               title: 'ProQuote',
               theme: theme,
@@ -183,6 +185,35 @@ GoRouter _buildRouter(AuthProvider authProvider) {
             builder: (context, state) => const MainScreen(child: CreateJobScreen()),
           ),
           GoRoute(
+            path: 'edit-job/:jobId',
+            builder: (context, state) {
+              final jobId = state.pathParameters['jobId']!;
+              return MainScreen(
+                child: Consumer<JobProvider>(
+                  builder: (context, jobProvider, _) {
+                    // Load the job if not already loaded
+                    if (jobProvider.currentJob?.id != jobId) {
+                      Future.microtask(() => jobProvider.loadJob(jobId));
+                    }
+                    
+                    // Show loading indicator while job is loading
+                    if (jobProvider.isLoading || jobProvider.currentJob == null) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    // Show error if job not found
+                    if (jobProvider.error != null) {
+                      return Center(child: Text('Error: ${jobProvider.error}'));
+                    }
+                    
+                    // Pass the job to the create job screen for editing
+                    return CreateJobScreen(jobToEdit: jobProvider.currentJob);
+                  },
+                ),
+              );
+            },
+          ),
+          GoRoute(
             path: 'providers',
             builder: (context, state) {
               final uri = Uri.parse(state.uri.toString());
@@ -222,7 +253,9 @@ class MainScreen extends StatelessWidget {
     
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
-      body: child,
+      body: SafeArea(
+        child: child,
+      ),
       bottomNavigationBar: const AppBottomNavigationBar(),
     );
   }
@@ -232,10 +265,10 @@ class AppBottomNavigationBar extends StatelessWidget {
   const AppBottomNavigationBar({super.key});
 
   static const List<(IconData, String, String)> _items = [
-    (Icons.home, 'Home', '/'),
-    (Icons.work, 'Jobs', '/jobs'),
-    (Icons.message, 'Messages', '/messages'),
-    (Icons.person, 'Profile', '/profile'),
+    (Icons.home_outlined, 'Home', '/'),
+    (Icons.work_outline_outlined, 'Jobs', '/jobs'),
+    (Icons.message_outlined, 'Messages', '/messages'),
+    (Icons.person_outline_outlined, 'Profile', '/profile'),
   ];
 
   @override
@@ -254,31 +287,140 @@ class AppBottomNavigationBar extends StatelessWidget {
       }
     }
     
-    return Theme(
-      data: Theme.of(context).copyWith(
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: theme.colorScheme.background,
-          selectedItemColor: theme.colorScheme.primary,
-          unselectedItemColor: theme.colorScheme.mutedForeground,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: theme.colorScheme.border.withOpacity(0.2),
         ),
-      ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        items: _items
-            .map(
-              (item) => BottomNavigationBarItem(
-                icon: Icon(item.$1),
-                label: item.$2,
+        BottomAppBar(
+          elevation: 0,
+          height: kBottomNavigationBarHeight,
+          padding: EdgeInsets.zero,
+          color: theme.colorScheme.background,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // First two items
+              for (int i = 0; i < 2; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      if (currentIndex != i) {
+                        context.go(_items[i].$3);
+                      }
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _items[i].$1,
+                          size: 22,
+                          color: currentIndex == i
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.mutedForeground,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _items[i].$2,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
+                            color: currentIndex == i
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
+              // Middle create job button
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    context.go('/create-job');
+                  },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          size: 22,
+                          color: theme.colorScheme.primaryForeground,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Create',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            )
-            .toList(),
-        onTap: (index) {
-          if (currentIndex != index) {
-            context.go(_items[index].$3);
-          }
-        },
-      ),
+              
+              // Last two items
+              for (int i = 2; i < 4; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      if (currentIndex != i) {
+                        context.go(_items[i].$3);
+                      }
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _items[i].$1,
+                          size: 22,
+                          color: currentIndex == i
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.mutedForeground,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _items[i].$2,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
+                            color: currentIndex == i
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

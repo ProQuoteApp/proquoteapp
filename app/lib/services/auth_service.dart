@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/auth_user.dart';
 import '../models/user_profile.dart';
 
@@ -38,6 +40,74 @@ class AuthService {
   AuthUser? get currentUser => _firebaseAuth.currentUser != null
       ? AuthUser.fromFirebaseUser(_firebaseAuth.currentUser!)
       : null;
+
+  /// Save user to persistent storage
+  Future<void> savePersistentUser(AuthUser user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userData = {
+        'uid': user.uid,
+        'email': user.email,
+        'displayName': user.displayName,
+        'phoneNumber': user.phoneNumber,
+        'photoURL': user.photoURL,
+        'createdAt': user.createdAt?.toIso8601String(),
+      };
+      await prefs.setString('auth_user', jsonEncode(userData));
+      print('User data saved to persistent storage');
+    } catch (e) {
+      print('Error saving user data: $e');
+    }
+  }
+  
+  /// Get user from persistent storage
+  Future<AuthUser?> getPersistentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userData = prefs.getString('auth_user');
+      
+      if (userData == null) {
+        return null;
+      }
+      
+      final Map<String, dynamic> userMap = jsonDecode(userData);
+      
+      // Check if Firebase user exists
+      final firebaseUser = _firebaseAuth.currentUser;
+      if (firebaseUser != null) {
+        // If Firebase user exists, use that
+        return AuthUser.fromFirebaseUser(firebaseUser);
+      }
+      
+      // Otherwise, create from saved data
+      return AuthUser(
+        uid: userMap['uid'],
+        email: userMap['email'],
+        displayName: userMap['displayName'],
+        phoneNumber: userMap['phoneNumber'],
+        photoURL: userMap['photoURL'],
+        createdAt: userMap['createdAt'] != null 
+            ? DateTime.parse(userMap['createdAt']) 
+            : null,
+        emailVerified: false, // Default value
+        providerIds: [], // Empty list as default
+      );
+    } catch (e) {
+      print('Error getting persistent user: $e');
+      return null;
+    }
+  }
+  
+  /// Clear user from persistent storage
+  Future<void> clearPersistentUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('auth_user');
+      print('User data cleared from persistent storage');
+    } catch (e) {
+      print('Error clearing user data: $e');
+    }
+  }
 
   /// Sign up with email and password
   Future<AuthUser> signUpWithEmailAndPassword({
