@@ -54,10 +54,11 @@ class _JobsScreenState extends State<JobsScreen> {
         centerTitle: isLargeScreen,
         additionalActions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add_outlined),
             onPressed: () {
               context.go('/create-job');
             },
+            tooltip: 'Create Job',
           ),
         ],
       ),

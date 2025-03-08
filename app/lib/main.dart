@@ -93,7 +93,7 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.dark,
               colorScheme: const ShadBlueColorScheme.dark(),
             ),
-            themeMode: ThemeMode.light, // Force dark theme
+            themeMode: ThemeMode.light, // Default to light theme
             appBuilder: (context, theme) => MaterialApp.router(
               title: 'ProQuote',
               theme: theme,
@@ -251,7 +251,9 @@ class MainScreen extends StatelessWidget {
     
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
-      body: child,
+      body: SafeArea(
+        child: child,
+      ),
       bottomNavigationBar: const AppBottomNavigationBar(),
     );
   }
@@ -261,10 +263,10 @@ class AppBottomNavigationBar extends StatelessWidget {
   const AppBottomNavigationBar({super.key});
 
   static const List<(IconData, String, String)> _items = [
-    (Icons.home, 'Home', '/'),
-    (Icons.work, 'Jobs', '/jobs'),
-    (Icons.message, 'Messages', '/messages'),
-    (Icons.person, 'Profile', '/profile'),
+    (Icons.home_outlined, 'Home', '/'),
+    (Icons.work_outline_outlined, 'Jobs', '/jobs'),
+    (Icons.message_outlined, 'Messages', '/messages'),
+    (Icons.person_outline_outlined, 'Profile', '/profile'),
   ];
 
   @override
@@ -283,123 +285,140 @@ class AppBottomNavigationBar extends StatelessWidget {
       }
     }
     
-    return Theme(
-      data: Theme.of(context).copyWith(
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: theme.colorScheme.background,
-          selectedItemColor: theme.colorScheme.primary,
-          unselectedItemColor: theme.colorScheme.mutedForeground,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: theme.colorScheme.border.withOpacity(0.2),
         ),
-      ),
-      child: BottomAppBar(
-        height: kBottomNavigationBarHeight,
-        padding: EdgeInsets.zero,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // First two items
-            for (int i = 0; i < 2; i++)
+        BottomAppBar(
+          elevation: 0,
+          height: kBottomNavigationBarHeight,
+          padding: EdgeInsets.zero,
+          color: theme.colorScheme.background,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // First two items
+              for (int i = 0; i < 2; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      if (currentIndex != i) {
+                        context.go(_items[i].$3);
+                      }
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _items[i].$1,
+                          size: 24,
+                          color: currentIndex == i
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.mutedForeground,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _items[i].$2,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
+                            color: currentIndex == i
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
+              // Middle create job button
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    if (currentIndex != i) {
-                      context.go(_items[i].$3);
-                    }
+                    context.go('/create-job');
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        _items[i].$1,
-                        color: currentIndex == i
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.mutedForeground,
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          size: 24,
+                          color: theme.colorScheme.primaryForeground,
+                        ),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        _items[i].$2,
+                        'Create',
                         style: TextStyle(
                           fontSize: 12,
-                          color: currentIndex == i
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.mutedForeground,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            
-            // Middle create job button
-            Expanded(
-              child: InkWell(
-                onTap: () {
-                  context.go('/create-job');
-                },
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        color: theme.colorScheme.primaryForeground,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Create',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Last two items
-            for (int i = 2; i < 4; i++)
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    if (currentIndex != i) {
-                      context.go(_items[i].$3);
-                    }
-                  },
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _items[i].$1,
-                        color: currentIndex == i
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.mutedForeground,
-                      ),
-                      Text(
-                        _items[i].$2,
-                        style: TextStyle(
-                          fontSize: 12,
+              
+              // Last two items
+              for (int i = 2; i < 4; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      if (currentIndex != i) {
+                        context.go(_items[i].$3);
+                      }
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _items[i].$1,
+                          size: 24,
                           color: currentIndex == i
                               ? theme.colorScheme.primary
                               : theme.colorScheme.mutedForeground,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _items[i].$2,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: currentIndex == i ? FontWeight.w600 : FontWeight.normal,
+                            color: currentIndex == i
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

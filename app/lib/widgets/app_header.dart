@@ -35,46 +35,80 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final user = userProvider.currentUser;
     final authUser = authProvider.currentUser;
+    final theme = ShadTheme.of(context);
 
-    return AppBar(
-      title: Text(title),
-      centerTitle: centerTitle,
-      leading: showBackButton 
-          ? IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: onBackPressed ?? () => context.pop(),
-            )
-          : leading,
-      actions: [
-        if (showNotifications)
-          ShadIconButton(
-            icon: const Icon(Icons.notifications),
-            onPressed: () {
-              // Navigate to notifications
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications coming soon')),
-              );
-            },
-          ),
-        if (showAvatar)
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: GestureDetector(
-              onTap: () {
-                context.go('/profile');
-              },
-              child: UserAvatar(
-                user: user,
-                authUser: authUser,
-                radius: AppConstants.smallAvatarRadius,
-              ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppBar(
+          elevation: 0,
+          backgroundColor: theme.colorScheme.background,
+          foregroundColor: theme.colorScheme.foreground,
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.foreground,
             ),
           ),
-        if (additionalActions != null) ...additionalActions!,
+          centerTitle: centerTitle,
+          leading: showBackButton
+              ? IconButton(
+                  icon: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 22,
+                    color: theme.colorScheme.foreground,
+                  ),
+                  onPressed: onBackPressed ?? () => context.pop(),
+                  tooltip: 'Back',
+                )
+              : leading,
+          actions: [
+            if (showNotifications)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.notifications_outlined,
+                    size: 24,
+                    color: theme.colorScheme.foreground,
+                  ),
+                  onPressed: () {
+                    // Navigate to notifications
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Notifications coming soon')),
+                    );
+                  },
+                  tooltip: 'Notifications',
+                ),
+              ),
+            if (additionalActions != null) ...additionalActions!,
+            if (showAvatar)
+              Padding(
+                padding: const EdgeInsets.only(right: 16.0, left: 8.0),
+                child: GestureDetector(
+                  onTap: () {
+                    context.go('/profile');
+                  },
+                  child: UserAvatar(
+                    user: user,
+                    authUser: authUser,
+                    radius: AppConstants.smallAvatarRadius,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: theme.colorScheme.border.withOpacity(0.2),
+        ),
       ],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 1);
 } 

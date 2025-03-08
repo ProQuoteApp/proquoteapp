@@ -52,20 +52,22 @@ class JobDetailsScreen extends StatelessWidget {
         additionalActions: [
           if (canEdit)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
               onPressed: () {
                 // Navigate to edit job screen
                 context.go('/edit-job/${job.id}');
               },
+              tooltip: 'Edit Job',
             ),
           IconButton(
-            icon: const Icon(Icons.share),
+            icon: const Icon(Icons.share_outlined),
             onPressed: () {
               // Share job functionality
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Share functionality coming soon')),
               );
             },
+            tooltip: 'Share',
           ),
         ],
       ),

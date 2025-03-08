@@ -42,7 +42,7 @@ class ProfileScreen extends StatelessWidget {
         additionalActions: [
           // Add a button to clear image cache
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_outlined),
             tooltip: 'Clear image cache',
             onPressed: () {
               // Clear the image cache
@@ -64,7 +64,8 @@ class ProfileScreen extends StatelessWidget {
           ),
           if (user != null && firestoreAvailable)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Profile',
               onPressed: () {
                 Navigator.push(
                   context,
@@ -80,7 +81,8 @@ class ProfileScreen extends StatelessWidget {
               },
             ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_outlined),
+            tooltip: 'Logout',
             onPressed: () async {
               await authProvider.signOut();
             },
@@ -464,6 +466,7 @@ class EditProfileScreenState extends State<EditProfileScreen> {
       appBar: AppHeader(
         title: 'Edit Profile',
         centerTitle: isLargeScreen,
+        showBackButton: true,
         additionalActions: [
           TextButton(
             onPressed: _isLoading ? null : _saveProfile,
@@ -478,7 +481,10 @@ class EditProfileScreenState extends State<EditProfileScreen> {
                   )
                 : const Text(
                     'Save',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ],
